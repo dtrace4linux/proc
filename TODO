@@ -1,0 +1,29 @@
+x 1. cpu view
+2. add ctx switches
+x 3. add history
+x 4. add graphs
+5. network / ifconfig
+6. meminfo: min / curr / max
+7. slabinfo
+8. /proc/interrupts
+9. default for a /proc entry or unix command.
+10. watch mode
+x 11. record commands/history
+12. menu to select commands
+
+x 1. procmon ? avoid repeated syscall opens
+2. validate proc/ctrl-b
+x 3. 2cols for THR
+4. delta on %CPU
+x 5. less/help
+x 6. double grep command
+x 7. graphs
+8. 'proc' ? add syscall/wchan
+x 9. pidmon.pl
+10. rup graphs
+
+1. ps %cpu/ %mem
+2. two procmon starts corrupts?
+3. ps needs to freeze the snapshot
+4. esc sequences
+5. are we seeing correct ps snapshot (ch's issue of old procs)

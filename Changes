@@ -1,0 +1,87 @@
+Fri Aug 12 20:27:15 2011  fox
+
+      26* Fix pid and cpu times caused by using %02d format in mmap file.
+
+Thu Aug 11 10:22:08 2011  fox
+
+      25* Archive: 1.0003
+
+      24* proc.c: Fix %CPU to be a moving average 80/20.
+
+      23* proc.c, monitor.c: Implement locking protocol to avoid time changing
+          under us on ps screen.
+
+      22* monitor.c: Fix realpath() in finding procmon.
+
+Wed Aug 10 10:59:50 2011  fox
+
+      21* Archive: 1.0002
+
+Tue Aug  9 10:49:37 2011  fox
+
+      20* Lots of fixes. 'ps' mode now works from history, as does
+          the header. 'help all' now displays the README.
+
+Sun Aug  7 11:23:05 2011  fox
+
+      19* Get proc mem size delta to work again.
+
+      18* Add THR column.
+
+      17* Add historic proc access.
+
+Wed Aug  3 23:30:26 2011  fox
+
+      16* add support for abs/delta/clear modes (works for softirq,
+          but nothing else just yet).
+
+Mon Aug  1 22:44:30 2011  fox
+
+      15* proc.c, monitor.c: Better time history and sync.
+
+      14* softirqs.c: Add softirqs support.
+
+Fri Jul 29 21:13:11 2011  fox
+
+      13* add background processing and history navigation.
+
+Mon Jul 25 22:07:05 2011  fox
+
+      12* add meminfo command.
+
+Sun Jul 24 22:03:52 2011  fox
+
+      11* Add 'disk' command and 'netstat' command.
+
+Fri Jul 22 21:23:40 2011  fox
+
+      10* proc.c: Add 'cpu' command.
+
+Wed Jul 20 22:24:44 2011  fox
+
+       9* proc.c: Load $HOME/.proc on startup.
+
+       8* comamnds.c: Show the column state on hide/show if no args.
+
+Sat Jan  2 22:27:05 2010  fox
+
+       7* linux/proc.c: Add SYSCALL column
+
+       6* linux/proc.c: Use /proc/pid/wchan
+
+Tue Sep 30 20:16:47 2008  fox
+
+       5* commands.c: Add flush command.
+
+Fri Sep 19 23:20:07 2008  fox
+
+       4* proc.c: Correct the stats for threads.
+
+Thu Sep 18 21:27:21 2008  fox
+
+       3* fix RSS overflow (maybe)
+
+       2* Show thread pids in white, vs green for real procs.
+
+       1* proc.c: Support later kernel /proc/pid/task threads.
+

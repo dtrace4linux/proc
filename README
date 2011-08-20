@@ -1,0 +1,195 @@
+"proc" is a colored top like utility which combines the features
+of many other 'top'-like tools, but has more integrated features.
+These include:
+
+   * History - you can scroll backwards to see the state of the system
+     at prior times.
+   * More commands.
+   * More detail on the commands.
+   * Ability to see absolute or relative counter values.
+   * Use of color.
+
+Command Summary
+---------------
+abs        Show absolute values.
+agg        Aggregate thread cpu into parent.
+clear      Clear counter values.
+count      Start counting mode.
+cpu        Show CPU details.
+delay      Set refresh delay.
+delta      Show delta values.
+disk       Show disk statistics..
+files      Show open file information
+flush      Flush open file from disk cache
+graph      Common graphs (loadavg, dirty memory, cached memory, etc)
+grep       Filter process output
+help       Display help
+hide       Hide a column
+irq        Show IRQ stats
+log        [on | off] Enable/disable logging
+meminfo    Memory info
+netstat    Show network statistics
+order      [[-]nprstuc] Normal; Proc; RSS; Size; Time; User; CPU
+proc       Show specific proc
+ps         Display process mode
+quit       Exit from tool
+range      Show numbers in units/ranges
+set        Set options/limits.
+show       Show a hidden column
+snap       Dump snapshots to file to see history
+softirqs   Show /proc/softirqs
+thread     Toggle thread mode
+units      Show units on numbers
+vmstat     Show vmstats
+?          Display help
+!          Run a unix command repeatedly
+
+Ctrl-B - page/back; Ctrl-F - page/fwd; Ctrl-R - reset paging
+
+Header information
+------------------
+The header shows a number of fields, all incrementals from
+the prior sample (typically 1s sample).
+
+last pid:       Shows the last pid created. If this is jumping in big
+                leaps then a fair amount of forking is going on. If
+		the new processes are not visible in the ps listing, then
+		it could be short lived processes (and %sys time
+		will likely be higher to handle the expense of processing
+		the forks/execs).
+
+in:             Interrupts. High levels of interrupts could be due to
+                I/O or network activity.
+
+load avg:       1, 5 and 15 min load average.
+
+Boot:           Time when system last booted.
+
+(Reverse) HH:MM:SS
+                When in rewind mode, the time of the sample (via
+		Ctrl-B/Ctrl-F)
+
+HH:MM:SS        Current time. Useful to watch in case no other activity.
+
+CPU:            Summary of the CPU characteristics (from /proc/cpuinfo)
+                If hyperthreading enabled, then "(HT)" will appear to
+		show the number of cores may be doubled up.
+
+proc:           Number of processes currently running or stopped or zombie.
+thr:            Number of threads.
+
+RAM:            Amount of memory in the system
+RSS:            Amount of resident working set for processes
+Free:           How much memory is free. Should be close to zero on a
+                normal system. Kernel will try and use memory for process
+		heaps or buffer cache. High free figure can indicate
+		large processes have terminated, or large files have
+		been deleted, or the memory hasnt been used since
+		bootup.
+Dirty:          How many dirty pages in memory which need to be committed to
+                disk. High figure indicates active I/O. Can be high when
+		doing large writes to slow devices (eg flash memory).
+Swap:           How much swap space is in use.
+Free:           How much swap space is available.
+
+
+Absolute / Delta display mode
+-----------------------------
+
+Some commands simply show the pure data from /proc (eg meminfo and
+vmstats). Many of these values are incrementing counters, and after a long
+period of uptime, the number of digits is large enough that even
+reading the numbers is hard work. Mentally determining what is
+going on is equally difficult. For these reports, a delta is shown
+next to the number to show if it is incrementing or decrementing
+since the last display. 
+
+To make it easier to read, a historical graph of recent activity is
+shown (typically around 2mins of history).
+
+The counters can be set to show absolute values or delta values.
+Delta values can be useful to show the count by 'zeroing' the value
+and watching the values rise.
+
+In addition the values can be displayed as pure numbers or as
+K/M/G to indicate thousands, millions, billions.
+
+The commands to use are:
+
+	* abs
+	* delta
+	* ranged
+	* clear
+
+Detailed command summary
+------------------------
+Process information
+Network information
+Disk
+CPU
+Memory
+Open files / cache usage
+proc <pid>   Show details for a process, including /proc/pid/status,
+             /proc/pid/stack and /proc/pid/syscall.
+
+softirqs     Show /proc/softirqs. /proc/softirqs is used to indicate
+             deferred interrupt level processing (which is painful to
+	     SMP configurations). Instead the interrupt routine is
+	     deferred until it can be enabled whilst other interrupts
+	     can be allowed. Its normal to see these on a well running
+	     kernel. Higher numbers indicate more interrupt processing,
+	     but also better perceived performance.
+
+vmstat       Show /proc/vmstat. There are lots of VM statistics and they
+             vary from kernel to kernel. The absolute value and a delta
+	     from the prior value are shown, along with a graph showing
+	     recent history. You can change the display mode to
+	     abs/delta mode and reset the counters.
+
+"proc" includes 20 minutes of buffered history - you can cycle
+back in time, to take a closer look at something which gained
+your attention.
+
+Other commands
+--------------
+grep [<pattern>]      Only show lines matching the pattern. Specify no
+                      pattern to restore the full list.
+
+History Mode
+------------
+
+Use the following keys to cycle through the history
+
+<Ctrl-B>    Move back 1s of time
+<Ctrl-F>    Move forward 1s of time
+<Ctrl-R>    Reset to 'realtime'
+
+Whilst in history mode, the realtime clock at the top right of the
+screen will adjust to the appropriate time sample.
+
+Type 'help' whilst running to see the interactive commands available.
+
+Environment Variables
+---------------------
+
+PROC_MAX_SYMS      Number of shared memory symbol slots to reserve.
+                   On later kernels, or kernels with lots of devices,
+		   the default values may be too small, so you may want
+		   to increase this, if "proc" complains of too few
+		   values.
+		   Default: 2048
+
+PROC_MAX_TICKS     Number of history slots to reserve per symbol. The
+                   amount of memory is directly proportional to this
+		   number. Each number corresponds to 1s of history.
+		   (1024 is rougly 20mins and about 300+MB of memory).
+
+Files
+-----
+"proc" uses shared memory to communicate between the collector/monitor.
+You will see 'procmon' in the process table for the collector. Only
+one process will run for the system - the collector is shared amongst
+the proc clients.
+
+Files are stored in /tmp/proc (or $TMPDIR/proc is $TMPDIR is
+defined).

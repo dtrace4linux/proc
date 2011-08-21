@@ -1,6 +1,6 @@
 # define	MAJ_VERSION	2
 # define	MIN_VERSION	1
-int	version_build_no = 26;
-# define VERSION_BUILD_NO 26
-char	version_build_date[] = "Fri Aug 12 20:27:15 2011";
+int	version_build_no = 27;
+# define VERSION_BUILD_NO 27
+char	version_build_date[] = "Sun Aug 21 21:28:05 2011";
 

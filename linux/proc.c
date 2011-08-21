@@ -83,6 +83,7 @@ int	need_resize;
 int	display_mode = DISPLAY_PS;
 int	agg_mode;
 int	have_task_dir;
+int	W_flag;
 
 extern int	proc_zombie;
 extern int	proc_running;
@@ -936,6 +937,9 @@ do_switches(int argc, char **argv)
 					usage();
 			 	c_flag = atoi(argv[i]);
 				continue;
+			  case 'W':
+			  	W_flag = TRUE;
+				break;
 			  default:
 			  	usage();
 				break;
@@ -1278,6 +1282,39 @@ print_ranged(unsigned long long n)
 		print_number_string("%5lluK", n / 1024);
 	else
 		print_number_string("%5lluM", n / (1024 * 1024));
+}
+void
+print_ranged2(unsigned long long n, unsigned long long n0)
+{	char	buf[BUFSIZ];
+
+	if (n < 100 * 1024)
+		snprintf(buf, sizeof buf, "%6llu", n);
+	else if (n < 100 * 1000*1000)
+		snprintf(buf, sizeof buf, "%5lluK", n / 1024);
+	else
+		snprintf(buf, sizeof buf, "%5lluM", n / (1024 * 1024));
+	print_number3(buf, n, n0);
+}
+void
+print_number3(char *buf, unsigned long long n, unsigned long long n0)
+{
+/*	set_attribute(GREEN, BLACK, 0);
+	while (*buf == ' ') {
+		print(" ");
+		buf++;
+		}
+*/
+	if (n == n0) {
+		set_attribute(YELLOW, BLACK, 0);
+		}
+	else if (n > n0) {
+		set_attribute(BLACK, YELLOW, 0);
+		}
+	else {
+		set_attribute(BLACK, RED, 0);
+		}
+	print(buf);
+	set_attribute(GREEN, BLACK, 0);
 }
 /**********************************************************************/
 /*   Read one subdir.						      */
@@ -1683,6 +1720,9 @@ settings_save()
 	if (home == NULL)
 		return;
 
+	if (W_flag)
+		return;
+
 	snprintf(fname, sizeof fname, "%s/.proc", home);
 	if ((fp = fopen(fname, "w")) == NULL)
 		return;
@@ -2037,6 +2077,7 @@ usage()
 	printf("    -killmon   Kill any existing child monitoring process.\n");
 	printf("    -cols NN   Set screen size to NN columns, rather than autodetect.\n");
 	printf("    -rows NN   Set screen size to NN rows, rather than autodetect.\n");
+	printf("    -W         Dont save state in $HOME/.proc\n");
 	printf("    N          Limit ourselves to N procs\n");
 	exit(1);
 }

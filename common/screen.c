@@ -164,8 +164,8 @@ int	ticks;
     }
 }
 
+void
 end_screen()
-
 {
 	set_attribute(WHITE, BLACK, 0);
 	display_attribute();
@@ -181,6 +181,7 @@ end_screen()
 	if (is_a_terminal)
 		ioctl(0, TCSETAF, &old_settings);
 }
+
 void
 reset_terminal()
 {

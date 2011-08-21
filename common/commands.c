@@ -324,6 +324,10 @@ help_func(int argc, char **argv)
 	print("\n");
 	print("Modes:\n");
 	print("  Aggregate mode: %s\n", agg_mode ? "on" : "off");
+	print("  Display mode:   %s\n", 
+		mode == MODE_DELTA ? "delta" :
+		mode == MODE_COUNT ? "count" :
+			"abs");
 	print("  Process view:   %s\n", display_mode == DISPLAY_PROC ? "process" : "thread");
 	print("\nThe following commands are available:\n");
 	for (cmdp = commands; cmdp->c_command; cmdp++) {

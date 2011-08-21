@@ -21,12 +21,19 @@ typedef struct disk_t {
 void
 display_disk()
 {	disk_t *np;
-	int	i;
+	int	i, j;
 	int	n = 0;
+	int	row = 0;
+	int	col = 0;
+	graph_t	*g;
 
 	if (diskstats_idx < 0)
 		diskstats_idx = mon_find("diskstats", &width);
 
+	g = graph_new();
+	graph_clear_chain(g);
+	graph_refresh(g);
+	
 	print("            rd  rdmrg rdsect  ms/rd     wr  wrmrg wrsect  ms/wr    #io   msio  wtio");
 	for (i = diskstats_idx; ; i++) {
 		char *name = mon_name(i);
@@ -36,6 +43,7 @@ display_disk()
 		if (name == NULL || strncmp(name, "diskstats.", 10) != 0)
 			break;
 
+		col++;
 		/***********************************************/
 		/*   If entire row is zero, then ignore it.    */
 		/***********************************************/
@@ -57,17 +65,43 @@ display_disk()
 				i = j - 1;
 				continue;
 				}
-			print("\n");
+			goto_rc(5 + row + 2, 1);
 			set_attribute(GREEN, BLACK, 0);
 			print("%-*s", width - 10, name);
+			row += 2;
+			col = 0;
 			}
 
 		v = mon_get_item(i, 0);
 		v0 = mon_get_item(i, -1);
 
 		print_number(i - diskstats_idx, 6, 0, v, v0);
+
+		/***********************************************/
+		/*   Draw graph.			       */
+		/***********************************************/
+		graph_clear(g);
+		graph_setfont(g, "6x9");
+		graph_setforeground(g, 0xffffff);
+		graph_setbackground(g, 0x80ffff);
+
+		graph_set(g, "x", (width - 10) * 7 + col * 7 * 7);
+		graph_set(g, "y", (row + 5) * 13);
+		graph_set(g, "height", 13);
+		graph_set(g, "width", 7 * 7 - 5);
+		graph_set(g, "background_color", 0x306080);
+		graph_set(g, "color", 0xff80c0);
+		for (j = 7 * 7; j > 0; j--) {
+			unsigned long long v = mon_get_rel(mon_name(i), -j);
+			unsigned long long v0 = mon_get_rel(mon_name(i), -j - 1);
+			graph_add(g, j, v - v0);
+			}
+		graph_plot(g);
+		graph_refresh(g);
+
 	}
 	print("\n");
+	graph_free(g);
 
 /*
 1 rd     -- # of reads issued
@@ -82,5 +116,6 @@ display_disk()
 10 msio  -- # of milliseconds spent doing I/Os
 11 mswio -- weighted # of milliseconds spent doing I/Os 
 */
+	print("\n");
 	clear_to_end_of_screen();
 }

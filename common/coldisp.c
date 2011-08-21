@@ -107,7 +107,7 @@ clear_screen()
 	memset(attr, MAKE_COLOR(WHITE, BLACK), rows * cols);
 
 	if (batch_mode) {
-		printf("\n");
+		out_str("\n");
 		}
 	else {	
 		out_str("\033[H\033[J");
@@ -243,10 +243,7 @@ goto_pos(int cx, int cy, int x, int y)
 	out_str(buf);
 }
 void
-set_attribute(fg, bg, attr)
-int	fg;
-int	bg;
-int	attr;
+set_attribute(int fg, int bg, int attr)
 {
 	dst_attr = MAKE_COLOR(fg, bg);
 }
@@ -317,6 +314,7 @@ clear_to_end_of_screen()
 		memset(&dpy[y * cols], ' ', cols);
 		memset(&attr[y * cols], MAKE_COLOR(WHITE, BLACK), cols);
 		}
+	display_attribute();
 	out_str("\033[J");
 	refresh();
 }
@@ -341,6 +339,7 @@ clear_to_eol()
 		}
 	if (x < cols) {
 		memset(&dpy[csr_y * cols + csr_x], ' ', cols - csr_x);
+		display_attribute();
 		if (!batch_mode)
 			out_str("\033[K");
 		}
@@ -383,7 +382,8 @@ static int oldsize;
 void
 print__number(int idx, int width, int is_signed, int percent,
 	unsigned long long v, unsigned long long v0, unsigned long divisor)
-{
+{	char	buf[BUFSIZ];
+
 	if (idx >= oldsize) {
 		if (oldsize == 0) {
 			oldsize = 64;
@@ -415,10 +415,12 @@ print__number(int idx, int width, int is_signed, int percent,
 		if (width <= 7 && v >= 1000000) {
 			print("%*.*s", width - 5, width - 5, " ");
 //		print_number_string("%*lluM", width, v / (1024 * 1024));
-			print_ranged(v);
+			print_ranged2(v, v0);
 			}
-		else
-			print_number_string(is_signed ? "%*lld" : "%*llu ", width, v);
+		else {
+			snprintf(buf, sizeof buf, is_signed ? "%*lld" : "%*llu ", width, v);
+			print_number3(buf, v, v0);
+			}
 		}
 	else if (mode == MODE_RANGED) {
 		print_ranged(v);

@@ -1960,11 +1960,11 @@ update_headers()
 		cpu_id,
 		mon_num_procs, mon_num_threads);
 	if (proc_zombie)
-		print_number_string(", zombies: %d", proc_zombie);
+		print_number_string(", %d zombies", proc_zombie);
 	if (proc_stopped)
-		print_number_string(", stopped: %d", proc_stopped);
+		print_number_string(", %d stopped", proc_stopped);
 	if (proc_running)
-		print_number_string(", running: %d", proc_running);
+		print_number_string(", %d running", proc_running);
 	print(proc_view ? " [proc]" : " [thread]");
 	clear_to_eol();
 

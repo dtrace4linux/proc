@@ -411,8 +411,15 @@ print__number(int idx, int width, int is_signed, int percent,
 		v0 = 0;
 		}
 
-	if (mode == MODE_ABS)
-		print_number_string(is_signed ? "%*lld" : "%*llu ", width, v);
+	if (mode == MODE_ABS) {
+		if (width <= 7 && v >= 1000000) {
+			print("%*.*s", width - 5, width - 5, " ");
+//		print_number_string("%*lluM", width, v / (1024 * 1024));
+			print_ranged(v);
+			}
+		else
+			print_number_string(is_signed ? "%*lld" : "%*llu ", width, v);
+		}
 	else if (mode == MODE_RANGED) {
 		print_ranged(v);
 		print(" ");

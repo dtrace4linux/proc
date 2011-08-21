@@ -454,7 +454,7 @@ mon_find(char *prefix, int *width)
 		if (strncmp(ep->me_name, prefix, len) == 0 &&
 		   ep->me_name[len] == '.') {
 		   	for (j = i; j < hash_size(hash_syms); j++) {
-				n = (int) (long) hash_data(harray[j]);
+				int n = (int) (long) hash_data(harray[j]);
 				mdir_entry_t *ep = entry(n);
 				int	w = strlen(ep->me_name);
 				if (strncmp(ep->me_name, prefix, len) != 0)
@@ -462,7 +462,7 @@ mon_find(char *prefix, int *width)
 				if (w > *width)
 					*width = w;
 				}
-		   	return i;
+		   	return n;
 			}
 		}
 	return -1;
@@ -587,14 +587,9 @@ mon_move(int arg)
 
 char *
 mon_name(int i)
-{	int n;
-	mdir_entry_t *ep;
+{	mdir_entry_t *ep;
 
-	if (i >= hash_size(hash_syms))
-		return NULL;
-
-	n = (int) (long) hash_data(harray[i]);
-	ep = entry(n);
+	ep = entry(i);
 	return ep->me_name;
 }
 

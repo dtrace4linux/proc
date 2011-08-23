@@ -382,7 +382,8 @@ void
 graph_refresh(graph_t *g)
 {
 	fflush(stdout);
-	write(1, g->g_buf, g->g_used);
+	out_strn(g->g_buf, g->g_used);
+	out_flush();
 
 	g->g_used = 0;
 }

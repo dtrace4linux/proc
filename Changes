@@ -1,3 +1,7 @@
+Sun Aug 21 22:08:10 2011  fox
+
+      27* Add graphs to the 'disk' command.
+
 Fri Aug 12 20:27:15 2011  fox
 
       26* Fix pid and cpu times caused by using %02d format in mmap file.

@@ -150,6 +150,9 @@ newf:
 		gzip -9 > $(HOME)/tmp/src.proc-`date +%Y%m%d`.tar.gz
 
 release:
+	mkrelease.pl bin/proc bin/monlist scripts
+
+release2:
 #	strip bin/proc bin/monlist
 	elfrewrite bin/proc 
 	elfrewrite bin/monlist

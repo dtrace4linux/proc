@@ -478,6 +478,20 @@ out_str(char *str)
 		out_char(*str++);
 }
 void
+out_strn(char *str, int len)
+{
+	if (batch_mode)
+		return;
+
+	if (oused + len < osize) {
+		memcpy(&obuf[oused], str, len);
+		oused += len;
+		return;
+		}
+	while (len-- > 0)
+		out_char(*str++);
+}
+void
 out_char(int ch)
 {
 	if (batch_mode)
@@ -491,8 +505,10 @@ void
 out_flush()
 {
 	fflush(stdout);
-	write(1, obuf, oused);
-	oused = 0;
+	if (oused) {
+		write(1, obuf, oused);
+		oused = 0;
+		}
 }
 void
 snapshot()

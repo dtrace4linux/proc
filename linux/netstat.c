@@ -1,112 +1,116 @@
 # include	"psys.h"
 # include	"screen.h"
 # include	"coldisp.h"
+# include	<sys/socket.h>
+# include	<netdb.h>
 
-/**********************************************************************/
-/*   Network stats.						      */
-/**********************************************************************/
-typedef struct netstat_t {
-	char	n_if[16];
-	unsigned long long	n_rxbytes;
-	unsigned long long	n_rxpkts;
-	unsigned long long	n_rxerrs;
-	unsigned long long	n_rxdrop;
-	unsigned long long	n_rxfifo;
-	unsigned long long	n_rxframe;
-	unsigned long long	n_rxcomp;
-	unsigned long long	n_rxmcast;
-	unsigned long long	n_txbytes;
-	unsigned long long	n_txpkts;
-	unsigned long long	n_txerrs;
-	unsigned long long	n_txdrop;
-	unsigned long long	n_txfifo;
-	unsigned long long	n_txcolls;
-	unsigned long long	n_txcarrier;
-	unsigned long long	n_txcomp;
-	} netstat_t;
-netstat_t	*netstat;
-netstat_t	*old_netstat;
-int		netstat_size;
-
-static void read_net(void);
+static char *tcp_states[] = {
+  "unknown",
+  "ESTABLISHED",
+  "SYN_SENT",
+  "SYN_RECV",
+  "FIN_WAIT1",
+  "FIN_WAIT2",
+  "TIME_WAIT",
+  "CLOSE",
+  "CLOSE_WAIT",
+  "LAST_ACK",
+  "LISTEN",
+  "CLOSING",
+  };
+# define	NUM_STATES (sizeof tcp_states / sizeof(int))
 
 void
 display_netstat()
-{	netstat_t *np;
-	int	n = 0;
+{	int	cnt;
+	int	i;
+	socket_t	*tbl;
+	char	buf[BUFSIZ];
+	char	buf2[BUFSIZ];
+	struct servent *sp;
+	struct sockaddr_in sin;
+	char	*spc;
+	int	states[sizeof tcp_states / sizeof (int)];
 
-	if (old_netstat) {
-		chk_free(old_netstat);
-		old_netstat = NULL;
-		}
-	if (netstat_size) {
-		old_netstat = chk_alloc(netstat_size * sizeof *netstat);
-		memcpy(old_netstat, netstat, netstat_size * sizeof *netstat);
-		}
+	memset(&sin, 0, sizeof sin);
 
-	read_net();
-	if (old_netstat == NULL)
-		old_netstat = chk_zalloc(netstat_size * sizeof *netstat);
-	print("         rxbyte  rxpkt rxerr rxdrop  txbyte txpkt txerr txdrop\n");
-	for (np = netstat; np < &netstat[netstat_size]; np++) {
-		netstat_t *np1 = &old_netstat[n++];
-		print("%-9s ", np->n_if);
-		print_ranged(np->n_rxbytes - np1->n_rxbytes);
-		print_ranged(np->n_rxpkts - np1->n_rxpkts);
-		print_ranged(np->n_rxerrs - np1->n_rxerrs);
-		print_ranged(np->n_rxdrop - np1->n_rxdrop);
-		print(" | ");
-		print_ranged(np->n_txbytes - np1->n_txbytes);
-		print_ranged(np->n_txpkts - np1->n_txpkts);
-		print_ranged(np->n_txerrs - np1->n_txerrs);
-		print_ranged(np->n_txdrop - np1->n_txdrop);
-		print("\n");
-	}
+	cnt = mon_read_netstat(0, &tbl);
+
+	print("netstat - %d sockets\n", cnt);
+	memset(states, 0, sizeof states);
+	for (i = 0; i < cnt; i++) {
+		states[tbl[i].state]++;
+		}
+	spc = "";
+	for (i = 0; i < NUM_STATES; i++) {
+		if (states[i] == 0)
+			continue;
+		print("%s%d %s", spc, states[i], tcp_states[i]);
+		spc = ", ";
+		}
+	print("\n");
+
+	print("OWNER    rcv :snd  Local address       Remote address      State\n");
+	for (i = 0; i < cnt; i++) {
+		long	ip;
+		char	*name = NULL;
+		char	port[128];
+		struct hostent *hp = NULL;
+		struct hostent *hp2 = NULL;
+		sin.sin_family = AF_INET;
+
+		/***********************************************/
+		/*   Local address.			       */
+		/***********************************************/
+		sp = getservbyport(htons(tbl[i].l_port), "tcp");
+		if (sp)
+			snprintf(port, sizeof port, sp->s_name);
+		else
+			snprintf(port, sizeof port, "%u", tbl[i].l_port);
+		if (switches['n' & 0x1f] == 0) {
+			ip = htonl(tbl[i].l_ip);
+			if (ip)
+				name = hostname(ip);
+			}
+		if (name)
+			snprintf(buf, sizeof buf, "%s:%s", name, port);
+		else
+			snprintf(buf, sizeof buf, "%ld.%ld.%ld.%ld:%s",
+				(tbl[i].l_ip >> 0) & 0xff,
+				(tbl[i].l_ip >> 8) & 0xff,
+				(tbl[i].l_ip >> 16) & 0xff,
+				(tbl[i].l_ip >> 24) & 0xff,
+				port);
+		/***********************************************/
+		/*   Remote address.			       */
+		/***********************************************/
+		sp = getservbyport(htons(tbl[i].r_port), "tcp");
+		if (sp)
+			snprintf(port, sizeof port, sp->s_name);
+		else
+			snprintf(port, sizeof port, "%u", tbl[i].r_port);
+		name = NULL;
+		if (switches['n' & 0x1f] == 0) {
+			ip = htonl(tbl[i].r_ip);
+			name = hostname(ip);
+			}
+		if (name)
+			snprintf(buf2, sizeof buf2, "%s:%s", name, port);
+		else
+			snprintf(buf2, sizeof buf2, "%ld.%ld.%ld.%ld:%s",
+				(tbl[i].r_ip >> 0) & 0xff,
+				(tbl[i].r_ip >> 8) & 0xff,
+				(tbl[i].r_ip >> 16) & 0xff,
+				(tbl[i].r_ip >> 24) & 0xff,
+				port);
+		print("%-8s %4d:%-4d %-19s %-19s %-14s \n",
+			username(tbl[i].uid),
+			tbl[i].rcvwin, tbl[i].sndwin,
+			buf,
+			buf2, 
+			tcp_states[tbl[i].state]);
+		}
+	print("\n");
+	chk_free(tbl);
 	clear_to_end_of_screen();
 }
-
-static void
-read_net()
-{	FILE	*fp;
-	char	buf[BUFSIZ];
-	int	n = 0;
-	netstat_t	*np;
-
-	if ((fp = fopen("/proc/net/dev", "r")) == NULL)
-		return;
-
-	fgets(buf, sizeof buf, fp);
-	fgets(buf, sizeof buf, fp);
-	while (fgets(buf, sizeof buf, fp)) {
-		if (n >= netstat_size) {
-			if (n == 0)
-				netstat = chk_zalloc(sizeof *netstat);
-			else {
-				netstat = chk_realloc(netstat, (n + 1) * sizeof *netstat);
-				memset(&netstat[n], 0, sizeof *netstat);
-				}
-			netstat_size++;
-			}
-		np = &netstat[n++];
-		sscanf(buf, " %s %llu %llu %llu %llu %llu %llu %llu %llu %llu", 
-			&np->n_if, 
-			&np->n_rxbytes,
-			&np->n_rxpkts,
-			&np->n_rxerrs,
-			&np->n_rxdrop,
-			&np->n_rxfifo,
-			&np->n_rxframe,
-			&np->n_rxcomp,
-			&np->n_rxmcast,
-			&np->n_txbytes,
-			&np->n_txpkts,
-			&np->n_txerrs,
-			&np->n_txdrop,
-			&np->n_txfifo,
-			&np->n_txcolls,
-			&np->n_txcarrier,
-			&np->n_txcomp);
-	}
-	fclose(fp);
-}
-

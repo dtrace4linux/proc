@@ -109,6 +109,7 @@ extern char *grep_filter;
 /**********************************************************************/
 /*   Prototypes.						      */
 /**********************************************************************/
+void int_handler(void);
 void settings_load(void);
 void settings_save(void);
 
@@ -192,6 +193,7 @@ main(int argc, char **argv)
 	/***********************************************/
 	dsp_crmode = TRUE;
 
+	signal(SIGINT, int_handler);
 	signal(SIGWINCH, win_handler);
 	signal(SIGTSTP, stop_handler);
 
@@ -1054,6 +1056,12 @@ get_value(char *cp)
 	sscanf(cp, "%lu", &ul);
 	return ul;
 }
+void
+int_handler()
+{
+	end_screen();
+	exit(0);
+}
 int
 is_visible(char *name)
 {	int	i;
@@ -1124,6 +1132,9 @@ main_loop(void)
 		  case DISPLAY_FILES:
 		  	display_files();
 			break;
+		  case DISPLAY_IFCONFIG:
+		  	display_ifconfig();
+			break;
 		  case DISPLAY_NETSTAT:
 		  	display_netstat();
 			break;
@@ -1149,8 +1160,6 @@ mvprint(5, 0, "pos=%d %d %llu\n", mon_pos, mon_tell(), (unsigned long long) mon_
 			mode == MODE_ABS ? "abs" :
 			mode == MODE_COUNT ? "count" :
 			mode == MODE_DELTA ? "delta" : "ranged");
-
-
 
 		out_flush();
 		/***********************************************/

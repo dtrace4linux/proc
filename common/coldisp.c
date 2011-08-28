@@ -56,17 +56,21 @@ init_display(int r, int c)
 		new_cols = c ? c : winsize.ws_col;
 		if (new_rows == rows && new_rows == cols)
 			return;
-		free(dpy);
-		free(attr);
+		chk_free(dpy);
+		chk_free(attr);
 		rows = new_rows;
 		cols = new_cols;
 		}
 # endif
 	display_initialised = TRUE;
-	dpy = (char *) malloc(rows * cols);
-	attr = (char *) malloc(rows * cols);
+	if (rows < 5)
+		rows = 5;
+	if (cols < 20)
+		cols = 20;
+	dpy = (char *) chk_alloc(rows * cols);
+	attr = (char *) chk_alloc(rows * cols);
 	if (!batch_mode)
-		history = (char *) calloc(rows * cols * MAX_HIST, 1);
+		history = (char *) chk_zalloc(rows * cols * MAX_HIST);
 	if (dpy == NULL || attr == NULL) {
 		fprintf(stderr, "Cannot get memory for display.\n");
 		exit(1);
@@ -84,15 +88,15 @@ disp_set_batch(int r, int c)
 		rows = r;
 		cols = c;
 		if (dpy)
-			free(dpy);
+			chk_free(dpy);
 		if (attr)
-			free(attr);
+			chk_free(attr);
 		if (history) {
-			free(history);
+			chk_free(history);
 			history = NULL;
 			}
-		dpy = (char *) malloc(rows * cols + 1);
-		attr = (char *) malloc(rows * cols + 1);
+		dpy = (char *) chk_alloc(rows * cols + 1);
+		attr = (char *) chk_alloc(rows * cols + 1);
 		}
 	batch_mode = 1;
 }

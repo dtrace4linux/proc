@@ -13,7 +13,7 @@
 /*--------------------------------------------------------------------*/
 /*  Description:  Code to implement shared memory access to /proc entries.
 /*--------------------------------------------------------------------*/
-/*  $Header: Last edited: 29-Jul-2011 1.1 $ */
+/*  $Header: Last edited: 27-Aug-2011 1.2 $ 			      */
 /**********************************************************************/
 
 /**********************************************************************/
@@ -30,8 +30,8 @@
 # include	<../foxlib/hash.h>
 # include	<sys/mman.h>
 
-# define	VERSION		7
-# define	MAX_SYMS	3100
+# define	VERSION		9
+# define	MAX_SYMS	3000
 # define	MAX_TICKS	1024
 
 int	proc_zombie;
@@ -40,7 +40,9 @@ int	proc_stopped;
 int	mon_num_procs;
 int	mon_num_threads;
 int	too_small;
+int	noexit;
 
+static char mon_fname[256];
 static int old_pos;
 hash_t	*hash_syms;
 static unsigned long max_syms = MAX_SYMS;
@@ -50,9 +52,10 @@ typedef struct mdir_t {
 	int		md_version;
 	int		md_revision;
 	int		md_pid;
+	time_t		md_readers;
 	unsigned long	md_count;
-	unsigned long	md_max;
-	unsigned long	md_ticks;
+	unsigned long	md_max_syms;
+	unsigned long	md_max_ticks;
 	unsigned long	md_first;
 	} mdir_t;
 
@@ -62,7 +65,11 @@ typedef struct mdir_entry_t {
 	} mdir_entry_t;
 typedef unsigned long long tick_t;
 
+/**********************************************************************/
+/*   Pointer to the shm area.					      */
+/**********************************************************************/
 void	*mmap_addr;
+size_t	mmap_size;
 mdir_t	*mdir;
 
 # define MDIR_ENTRY(base, offset) (mdir_entry_t *) ((char *) base + offset)
@@ -92,22 +99,42 @@ extern struct timeval last_tv;
 #define	TY_NO_LABEL		0x004
 #define	TY_IGNORE_HEADER	0x008
 #define	TY_DISKSTATS		0x010
-static void mon_item(char *fname, int type);
+#define	TY_IGNORE_HEADER2       0x020
+static void mon_item(char *fname, char *name, int type);
 static void mon_set(char *vname, tick_t v);
 void monitor_list(int);
 char	*basename(char *);
 static void mon_rehash(void);
+void mon_netstat(void);
 void mon_procs(void);
 int read_syscall(int pid);
 void monitor_read(void);
 void monitor_init(void);
 
 #if defined(MAIN)
+void do_switches(int argc, char **argv);
+
 int main(int argc, char **argv)
 {
+	do_switches(argc, argv);
+
 	is_monitor = TRUE;
 	monitor_list(argc > 1 ? atoi(argv[1]) : -1);
 	return 0;
+}
+void
+do_switches(int argc, char **argv)
+{
+	int	i;
+	char	*cp;
+
+	for (i = 1; i < argc; i++) {
+		cp = argv[i];
+		if (strcmp(cp, "noexit") == 0) {
+			noexit = TRUE;
+			continue;
+			}
+		}
 }
 void
 reset_terminal()
@@ -123,7 +150,6 @@ main_procmon()
 	struct timeval tval;
 	struct stat sbuf;
 	struct stat sbuf1;
-	char	mon_fname[PATH_MAX];
 
 	monitor_init();
 
@@ -142,6 +168,13 @@ main_procmon()
 			break;
 
 		/***********************************************/
+		/*   If nobody is watching, then give up.      */
+		/***********************************************/
+		if (mdir->md_readers && !noexit &&
+		    time(NULL) > mdir->md_readers + 20 * 60)
+		    	break;
+
+		/***********************************************/
 		/*   Watch out for someone deleting the file.  */
 		/***********************************************/
 		if (stat(mon_fname, &sbuf1) < 0)
@@ -157,6 +190,8 @@ main_procmon()
 
 		gettimeofday(&tval, NULL);
 		mon_set("time", (tick_t) tval.tv_sec * 100 + tval.tv_usec / 10000);
+
+		printf("%s getting data\n", time_str());
 		monitor_read();
 
 		sleep(1);
@@ -173,31 +208,36 @@ mon_sort(const void *p1, const void *p2)
 
 void
 monitor_init()
-{	char	mon_fname[PATH_MAX];
+{
 	char	buf[PATH_MAX];
 	int	i, fd;
 	int	pid;
 	int	size;
 	int	created = FALSE;
 	char	*cp;
+	mdir_t	hdr;
+	static int first_time = TRUE;
 
 	if (mmap_addr)
 		return;
 
-	if ((cp = getenv("PROC_MAX_SYMS")) != NULL)
-		max_syms = atoi(cp);
-	if ((cp = getenv("PROC_MAX_TICKS")) != NULL)
-		max_ticks = atoi(cp);
+	if (first_time) {
+		if ((cp = getenv("PROC_MAX_SYMS")) != NULL)
+			max_syms = atoi(cp);
+		if ((cp = getenv("PROC_MAX_TICKS")) != NULL)
+			max_ticks = atoi(cp);
+		first_time = FALSE;
+		}
 
 	size = sizeof(mdir_t) + max_syms * sizeof(mdir_entry_t) + 
 			max_syms * max_ticks * sizeof(tick_t);
 
-	snprintf(buf, sizeof buf, "%s/proc",
+	snprintf(mon_fname, sizeof mon_fname, "%s/proc", 
 		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
-	mkdir(buf, 0777);
+	mkdir(mon_fname, 0777);
 
 	hash_syms = hash_create(128, 128);
-	snprintf(mon_fname, sizeof mon_fname, "%s/proc.mmap", buf);
+	strcat(mon_fname, "/proc.mmap");
 
 	if ((fd = open(mon_fname, O_RDWR)) < 0) {
 		char buf[1024];
@@ -219,7 +259,20 @@ monitor_init()
 				}
 			}
 		}
+	else {
+		if (read(fd, &hdr, sizeof hdr) != sizeof hdr) {
+			printf("Error reading header - please retry\n");
+			exit(1);
+			}
+		if (hdr.md_max_syms)
+			max_syms = hdr.md_max_syms;
+		if (hdr.md_max_ticks)
+			max_ticks = hdr.md_max_ticks;
+		size = sizeof(mdir_t) + max_syms * sizeof(mdir_entry_t) + 
+				max_syms * max_ticks * sizeof(tick_t);
+		}
 	mmap_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	mmap_size = size;
 	close(fd);
 
 	mdir = mmap_addr;
@@ -235,7 +288,8 @@ monitor_init()
 		memset(mdir, 0, size);
 		mdir->md_version = VERSION;
 		mdir->md_revision = rev;
-		mdir->md_ticks = max_ticks;
+		mdir->md_max_syms = max_syms;
+		mdir->md_max_ticks = max_ticks;
 		mdir->md_pid = 0;
 		}
 
@@ -274,9 +328,9 @@ monitor_list(int entry)
 		if (system(buf) != 0) {
 			}
 		}
-	printf("Ticks   : %lu\n", mdir->md_ticks);
+	printf("Ticks   : %lu\n", mdir->md_max_ticks);
 	printf("Count   : %lu\n", mdir->md_count);
-	printf("Max     : %lu\n", mdir->md_max);
+	printf("Max syms: %lu\n", mdir->md_max_syms);
 
 	printf("      Offset First Value\n");
 	for (i = 0; i <= (int) mdir->md_count; i++) {
@@ -296,24 +350,39 @@ monitor_list(int entry)
 			}
 		}
 }
+/**********************************************************************/
+/*   One  loop  for  procmon. If the proc.mmap file is too small, we  */
+/*   discard it and restart with a bigger size.			      */
+/**********************************************************************/
 void
 monitor_read()
 {	char	buf[BUFSIZ];
 	FILE	*fp;
 
-	monitor_init();
-	mon_item("/proc/stat", 		TY_ONE_PER_LINE);
-	mon_item("/proc/vmstat", 	TY_ONE_PER_LINE);
-	mon_item("/proc/meminfo", 	TY_ONE_PER_LINE_UNITS);
-	mon_item("/proc/loadavg", 	TY_NO_LABEL);
-	mon_item("/proc/softirqs", 	TY_IGNORE_HEADER);
-	mon_item("/proc/diskstats", 	TY_DISKSTATS);
-	mon_procs();
+	while (1) {
+		monitor_init();
+		mon_item("/proc/stat", 	    NULL,	TY_ONE_PER_LINE);
+		mon_item("/proc/vmstat",    NULL,	TY_ONE_PER_LINE);
+		mon_item("/proc/meminfo",   NULL,	TY_ONE_PER_LINE_UNITS);
+		mon_item("/proc/loadavg",   NULL,	TY_NO_LABEL);
+		mon_item("/proc/softirqs",  NULL,	TY_IGNORE_HEADER);
+		mon_item("/proc/diskstats", NULL,	TY_DISKSTATS);
+		mon_item("/proc/net/dev",   "ifconfig", TY_IGNORE_HEADER | TY_IGNORE_HEADER2);
+		mon_netstat();
+		mon_procs();
 
-	if (too_small) {
-		printf("Symbol table too small max=%lu, needed=%lu\n", max_syms, mdir->md_count);
-		reset_terminal();
-		exit(1);
+		if (!too_small)
+			break;
+
+		printf("Symbol table too small max_syms=%lu, needed=%lu .. resizing\n", max_syms, mdir->md_count);
+
+		max_syms = mdir->md_count + 128;
+		munmap(mmap_addr, mmap_size);
+		unlink(mon_fname);
+		hash_clear(hash_syms, 0);
+		mmap_addr = NULL;
+		too_small = 0;
+		sleep(1);
 		}
 }
 void
@@ -352,6 +421,14 @@ monitor_start()
 	buf2[ret] = '\0';
 	snprintf(buf, sizeof buf, "%smon", buf2);
 	global_argv[0] = buf;
+	/***********************************************/
+	/*   Close  stdout  since  procmon  writes to  */
+	/*   there.  We can use strace to detect what  */
+	/*   is  going  on,  or  maybe  redirect to a  */
+	/*   logfile.				       */
+	/***********************************************/
+	close(1);
+	open("/dev/null", O_WRONLY);
 	execve(buf, global_argv, NULL);
 	printf("exeve %s failed\n", buf);
 	exit(1);
@@ -369,7 +446,7 @@ mon_exists(char *name)
 /*   Read a /proc entry and parse it away into the mmap.	      */
 /**********************************************************************/
 static void
-mon_item(char *fname, int type)
+mon_item(char *fname, char *lname, int type)
 {	FILE	*fp;
 	char	buf[BUFSIZ];
 	char	var[BUFSIZ];
@@ -384,6 +461,10 @@ mon_item(char *fname, int type)
 		if (fgets(buf, sizeof buf, fp)) {
 			}
 		}
+	if (type & TY_IGNORE_HEADER2) {
+		if (fgets(buf, sizeof buf, fp)) {
+			}
+		}
 
 	while (fgets(buf, sizeof buf, fp)) {
 		int	len = strlen(buf);
@@ -391,7 +472,10 @@ mon_item(char *fname, int type)
 
 		if (len && buf[len-1] == '\n')
 			buf[--len] = '\0';
-		strcpy(vname, basename(fname));
+		if (lname)
+			strcpy(vname, lname);
+		else
+			strcpy(vname, basename(fname));
 		vp = vname + strlen(vname);
 		while (isspace(*cp)) cp++;
 		if (type & TY_DISKSTATS) {
@@ -517,6 +601,10 @@ mon_get_item(int n, int rel)
 unsigned long long
 mon_get_time()
 {
+	/***********************************************/
+	/*   Let mon proc know someone is watching.    */
+	/***********************************************/
+	mdir->md_readers = time(NULL);
 	return mon_get("time");
 }
 
@@ -593,6 +681,46 @@ mon_name(int i)
 	return ep->me_name;
 }
 
+/**********************************************************************/
+/*   Get delta netstat info.					      */
+/**********************************************************************/
+void
+mon_netstat(void)
+{
+#if !defined(MAIN)
+	procinfo_t	*pinfo;
+	int	i, num;
+	FILE	*fp;
+	FILE	*fp1;
+	char	buf[BUFSIZ];
+	char	buf1[BUFSIZ];
+	char	buf2[BUFSIZ];
+
+	snprintf(buf1, sizeof buf1, "%s/proc/netstat.%04d.tmp", 
+		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
+		(int) mdir->md_first);
+	if ((fp1 = fopen("/proc/net/tcp", "r")) == NULL)
+		return;
+	if ((fp = fopen(buf1, "w")) == NULL) {
+		fclose(fp1);
+		return;
+		}
+	chmod(buf, 0666);
+
+	while (fgets(buf, sizeof buf, fp1) != NULL) {
+		fputs(buf, fp);
+	}
+	fclose(fp);
+	fclose(fp1);
+	strcpy(buf2, buf1);
+	buf2[strlen(buf2)-4] = '\0';
+	if (rename(buf1, buf2) != 0) {
+		fprintf(stderr, "rename(%s, %s)\n", buf1, buf2);
+		perror("rename");
+		exit(1);
+		}
+#endif
+}
 /**********************************************************************/
 /*   Get the process info and write to the shared files.	      */
 /**********************************************************************/
@@ -677,6 +805,57 @@ get_num(char **str)
 	return neg * v;
 }
 
+/**********************************************************************/
+/*   Get the netstat data.					      */
+/**********************************************************************/
+int
+mon_read_netstat(int rel, socket_t **tblp)
+{	int	m;
+	char	buf[BUFSIZ];
+	FILE	*fp;
+	socket_t	*sp;
+	socket_t *tbl;
+	int	size;
+	int	used;
+
+	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
+	snprintf(buf, sizeof buf, "%s/proc/netstat.%04d", 
+		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
+		m);
+	if ((fp = fopen(buf, "r")) == NULL)
+		return 0;
+	/***********************************************/
+	/*   Skip header.			       */
+	/***********************************************/
+	if (fgets(buf, sizeof buf, fp) == NULL) {
+		fclose(fp);
+		return 0;
+		}
+
+	size = 50;
+	used = 0;
+	tbl = (socket_t *) chk_alloc(size * sizeof *tbl);
+
+	while (fgets(buf, sizeof buf, fp) != NULL) {
+		buf[strlen(buf)-1] = '\0';
+		if (used + 1 >= size) {
+			size += 100;
+			tbl = (socket_t *) chk_realloc(tbl, size * sizeof *tbl);
+			}
+
+		sp = &tbl[used++];
+		sscanf(buf, " %*s %lx:%x %lx:%x %x %x:%x %*x:%*x %*x %d",
+			&sp->l_ip, &sp->l_port,
+			&sp->r_ip, &sp->r_port,
+			&sp->state,
+			&sp->rcvwin,
+			&sp->sndwin,
+			&sp->uid);
+	}
+	fclose(fp);
+	*tblp = tbl;
+	return used;
+}
 /**********************************************************************/
 /*   Read the proc files.					      */
 /**********************************************************************/
@@ -849,8 +1028,11 @@ mon_rehash()
 
 	for (i = 1; i <= (int) mdir->md_count; i++) {
 		mdir_entry_t *ep = entry(i);
+//printf("adding %2d %s\n", i, ep->me_name);
 		if (hash_insert(hash_syms, ep->me_name, (void *) (long) i) == FALSE) {
 			printf("hash-reinit failure, i=%d ep=%p (%s)\n", i, ep, ep->me_name);
+			if (mon_fname[0])
+				unlink(mon_fname);
 			reset_terminal();
 			exit(1);
 			}

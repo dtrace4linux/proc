@@ -25,10 +25,11 @@ graph      Common graphs (loadavg, dirty memory, cached memory, etc)
 grep       Filter process output
 help       Display help
 hide       Hide a column
+ifconfig   Show network interface stats
 irq        Show IRQ stats
 log        [on | off] Enable/disable logging
 meminfo    Memory info
-netstat    Show network statistics
+netstat    Show socket information
 order      [[-]nprstuc] Normal; Proc; RSS; Size; Time; User; CPU
 proc       Show specific proc
 ps         Display process mode
@@ -127,7 +128,8 @@ Process information
 Network information
 Disk
 CPU
-Memory
+meminfo	     Show /proc/meminfo. Only non-zero values are displayed.
+
 Open files / cache usage
 proc <pid>   Show details for a process, including /proc/pid/status,
              /proc/pid/stack and /proc/pid/syscall.

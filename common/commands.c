@@ -24,6 +24,7 @@
 
 FILE	*log_fp;
 
+char	switches[26];
 int	flush_content = -1;
 int	proc_view;
 
@@ -49,6 +50,7 @@ static void	graph_func(int argc, char **argv);
 static void	grep_func(int argc, char **argv);
 static void	help_func(int argc, char **argv);
 static void	hide_func(int argc, char **argv);
+static void	ifconfig_func(int argc, char **argv);
 static void	irq_func(int argc, char **argv);
 static void	kill_func(int argc, char **argv);
 static void	log_func(int argc, char **argv);
@@ -87,10 +89,11 @@ struct commands {
 	{"grep",	grep_func,	"Filter process output"},
 	{"help",	help_func,	"Display help"},
 	{"hide",	hide_func,	"Hide a column"},
+	{"ifconfig",	ifconfig_func,	"Show network interface stats"},
 	{"irq",		irq_func,	"Show IRQ stats"},
 	{"log",		log_func,	"[on | off] Enable/disable logging"},
 	{"meminfo",	meminfo_func,	"Memory info"},
-	{"netstat",	netstat_func,	"Show network statistics"},
+	{"netstat",	netstat_func,	"Show socket connections"},
 	{"order",	order_func,	"[[-]nprstuc] Normal; Proc; RSS; Size; Time; User; CPU"},
 	{"proc",	proc_func,	"Show specific proc"},
 	{"ps",		ps_func,	"Display process mode"},
@@ -113,6 +116,22 @@ extern int proc_id;
 int	delay_time = 5;
 
 char	*chk_strdup(char *);
+
+static void
+command_switches(int argc, char **argv)
+{	int	i;
+
+	memset(switches, 0, sizeof switches);
+	for (i = 1; i < argc; i++) {
+		char *cp = argv[i];
+		if (*cp++ != '-')
+			continue;
+		while (isalpha(*cp)) {
+			switches[toupper(*cp) - '@'] = 1;
+			cp++;
+			}
+		}
+}
 
 static void
 display_error(char *str, ...)
@@ -369,6 +388,11 @@ hide_func(int argc, char **argv)
 	press_to_continue();
 }
 static void
+ifconfig_func(int argc, char **argv)
+{
+	display_mode = DISPLAY_IFCONFIG;
+}
+static void
 irq_func(int argc, char **argv)
 {
 	display_mode = DISPLAY_IRQ;
@@ -485,6 +509,7 @@ static void
 netstat_func(int argc, char **argv)
 {
 	display_mode = DISPLAY_NETSTAT;
+	command_switches(argc, argv);
 }
 static void
 order_func(int argc, char **argv)

@@ -1,3 +1,16 @@
+Sun Aug 28 23:30:50 2011  fox
+
+      31* netstat.c: Add dynamic 'netstat' command.
+
+Sat Aug 27 10:40:41 2011  fox
+
+      30* netstat.c: Rename to ifconfig. Add graphs support
+
+      29* proc.c: Implement ^C handler to clear the graphics.
+
+      28* monitor.c: Handle auto-resizing of the mmap when we run out
+          of symbols.
+
 Sun Aug 21 22:08:10 2011  fox
 
       27* Add graphs to the 'disk' command.

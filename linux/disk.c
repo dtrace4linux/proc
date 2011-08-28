@@ -5,22 +5,9 @@
 static int diskstats_idx = -1;
 static int width;
 
-typedef struct disk_t {
-	char	d_name[16];
-	unsigned long long d_reads;
-	unsigned long long d_rdmrg;
-	unsigned long long d_rdsec;
-	unsigned long long d_msread;
-	unsigned long long d_writes;
-	unsigned long long d_wrmrg;
-	unsigned long long d_wrsec;
-	unsigned long long d_mswrite;
-	unsigned long long d_curios;
-	} disk_t;
-
 void
 display_disk()
-{	disk_t *np;
+{
 	int	i, j;
 	int	n = 0;
 	int	row = 0;

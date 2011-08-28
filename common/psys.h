@@ -68,6 +68,7 @@
 # define	DISPLAY_IRQ	10
 # define	DISPLAY_SOFTIRQS	11
 # define	DISPLAY_GRAPHS	12
+# define	DISPLAY_IFCONFIG	13
 
 /**********************************************************************/
 /*   Structure to describe a process on the system.		      */
@@ -116,9 +117,26 @@ struct cpuinfo_t {
 	} *cpuinfo;
 
 /**********************************************************************/
+/*   netstat/socket into.					      */
+/**********************************************************************/
+typedef struct socket_t {
+	unsigned long	l_ip;
+	unsigned int	l_port;
+	unsigned long	r_ip;
+	unsigned int	r_port;
+	unsigned int	state;
+	unsigned int	rcvwin;
+	unsigned int	sndwin;
+	int		uid;
+	} socket_t;
+
+int mon_read_netstat(int rel, socket_t **tblp);
+
+/**********************************************************************/
 /*   Externs.							      */
 /**********************************************************************/
 extern int 	agg_mode;
+extern char switches[26];
 extern int 	proc_view;
 extern int	display_mode;
 extern int	kstat_level;

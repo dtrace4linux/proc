@@ -16,6 +16,7 @@ OBJ=	\
 	$(OBJDIR)/disk.o \
 	$(OBJDIR)/graph.o \
 	$(OBJDIR)/graphs.o \
+	$(OBJDIR)/ifconfig.o \
 	$(OBJDIR)/kernel.o \
 	$(OBJDIR)/meminfo.o \
 	$(OBJDIR)/monitor.o \
@@ -59,7 +60,7 @@ sigdesc.h: ../common/sigconv.awk $(SIGNAL_H)
 
 $(OBJDIR)/proc: $(OBJDIR) $(OBJ)
 #	setuid root rm -f $(OBJDIR)/proc
-	$(PURIFY) $(CC) -o $(OBJDIR)/proc $(OBJ) $(CRISP_LIB) $(LIBS) 
+	$(PURIFY) $(CC) -o $(OBJDIR)/proc $(OBJ) $(CRISP_LIB) $(LIBS)
 	$(CC) -o $(OBJDIR)/monlist -DMAIN=1 monitor.c $(CRISP_LIB) $(LIBS)
 	rm -f $(OBJDIR)/procmon ; ln -s proc $(OBJDIR)/procmon
 #	setuid root chown root $(OBJDIR)/proc
@@ -102,6 +103,10 @@ $(OBJDIR)/graph.o:	graph.c $(H)
 $(OBJDIR)/graphs.o:	graphs.c $(H)
 	$(CC) -c graphs.c
 	mv graphs.o $(OBJDIR)
+
+$(OBJDIR)/ifconfig.o:	ifconfig.c $(H)
+	$(CC) -c ifconfig.c
+	mv ifconfig.o $(OBJDIR)
 
 $(OBJDIR)/kernel.o:	kernel.c $(H)
 	$(CC) -c kernel.c

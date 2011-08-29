@@ -128,6 +128,7 @@ typedef struct socket_t {
 	unsigned int	rcvwin;
 	unsigned int	sndwin;
 	int		uid;
+	unsigned long	inode;
 	} socket_t;
 
 int mon_read_netstat(int rel, socket_t **tblp);

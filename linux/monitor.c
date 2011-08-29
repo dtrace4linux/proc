@@ -171,8 +171,10 @@ main_procmon()
 		/*   If nobody is watching, then give up.      */
 		/***********************************************/
 		if (mdir->md_readers && !noexit &&
-		    time(NULL) > mdir->md_readers + 20 * 60)
+		    time(NULL) > mdir->md_readers + 20 * 60) {
+		    	printf("%s no more readers, and have been idle for 20m. Exiting\n", time_str());
 		    	break;
+			}
 
 		/***********************************************/
 		/*   Watch out for someone deleting the file.  */
@@ -844,13 +846,14 @@ mon_read_netstat(int rel, socket_t **tblp)
 			}
 
 		sp = &tbl[used++];
-		sscanf(buf, " %*s %lx:%x %lx:%x %x %x:%x %*x:%*x %*x %d",
+		sscanf(buf, " %*s %lx:%x %lx:%x %x %x:%x %*x:%*x %*x %d %*d %lu",
 			&sp->l_ip, &sp->l_port,
 			&sp->r_ip, &sp->r_port,
 			&sp->state,
-			&sp->rcvwin,
 			&sp->sndwin,
-			&sp->uid);
+			&sp->rcvwin,
+			&sp->uid,
+			&sp->inode);
 	}
 	fclose(fp);
 	*tblp = tbl;

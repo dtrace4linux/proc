@@ -46,6 +46,7 @@ vmstat     Show vmstats
 !          Run a unix command repeatedly
 
 Ctrl-B - page/back; Ctrl-F - page/fwd; Ctrl-R - reset paging
+Ctrl-L - redraw screen
 
 Header information
 ------------------
@@ -129,6 +130,13 @@ Network information
 Disk
 CPU
 meminfo	     Show /proc/meminfo. Only non-zero values are displayed.
+netstat [-n] Show current socket information. Additional details include
+             the owning process (if it can be determined). Given
+	     that a socket can be shared amongst processes, only one
+	     process is shown (use lsof utility or examine /proc/pid/fd
+	     to find the duplicate owners).
+
+	     Use -n to see only the raw IP addresses.
 
 Open files / cache usage
 proc <pid>   Show details for a process, including /proc/pid/status,

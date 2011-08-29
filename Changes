@@ -1,3 +1,7 @@
+Mon Aug 29 20:34:22 2011  fox
+
+      32* netstat.c: Various fixes/enhancements. Still work in progress.
+
 Sun Aug 28 23:30:50 2011  fox
 
       31* netstat.c: Add dynamic 'netstat' command.

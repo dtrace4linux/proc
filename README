@@ -129,14 +129,33 @@ Process information
 Network information
 Disk
 CPU
+grep [!]expr Use this command to restrict the view to lines which match
+             or (!) do not match the patern. At present, the pattern
+	     is a literal match (no regexp support). Prefix the pattern
+	     with "!" to do a negative match. The expression is used
+	     to match columns, rather than specific lines. Not all
+	     views support the feature.
+
 meminfo	     Show /proc/meminfo. Only non-zero values are displayed.
-netstat [-n] Show current socket information. Additional details include
+
+netstat      Show current socket information. Additional details include
              the owning process (if it can be determined). Given
 	     that a socket can be shared amongst processes, only one
 	     process is shown (use lsof utility or examine /proc/pid/fd
 	     to find the duplicate owners).
 
-	     Use -n to see only the raw IP addresses.
+	     The display is a multiline display. The first line shows
+	     the owner of the socket, the rcv/snd data queue, connection
+	     state and local/remote address, in numeric format. Subsequent
+	     lines show the local/remote address as names. If the owning
+	     process can be determined, then the PID and process name is shown.
+
+	     If no pid/command line is shown, then we are not running as root
+	     and cannot determine the owner.
+
+	     You can use the "grep" command to restrict the view to
+	     matching lines or non-matching lines. (Prefix grep
+	     pattern with "!", e.g. "grep !LISTEN").
 
 Open files / cache usage
 proc <pid>   Show details for a process, including /proc/pid/status,
@@ -203,3 +222,14 @@ the proc clients.
 
 Files are stored in /tmp/proc (or $TMPDIR/proc is $TMPDIR is
 defined).
+
+Security Considerations
+-----------------------
+"proc" does not need to run as root, but some information may be
+missing if it does not run as root. E.g. socket owning information
+is one example.
+
+Running proc as root, on your own system is perfectly reasonable, but
+be careful of running as root on a public or limited access system.
+proc can be used to kill process, spawn process, and writes to files
+in the /tmp/proc directory.

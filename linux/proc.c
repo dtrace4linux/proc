@@ -114,7 +114,6 @@ void settings_load(void);
 void settings_save(void);
 
 static char *read_syscall(int pid);
-static int compare(char *str, char *re);
 static unsigned long display_files_mincore(char *filename, struct stat *, int *);
 char	*basename(char *);
 static void usage(void);
@@ -324,7 +323,7 @@ static dstr_t old_dstr;
 		if (fname[strlen(fname) - 1] == '\n')
 			fname[strlen(fname)-1] = '\0';
 
-		if (grep_filter && compare(fname, grep_filter))
+		if (grep_filter && grep_compare(fname))
 			continue;
 
 		if (hash_lookup(hash, fname))
@@ -581,12 +580,13 @@ display_proc()
 	clear_to_end_of_screen();
 # endif
 }
-static int
-compare(char *str, char *re)
-{	int not, ret;
+int
+grep_compare(char *str)
+{	char *re = grep_filter;
+	int not, ret;
 
 	if (!re)
-		return FALSE;
+		return TRUE;
 
 	not = *re == '!';
 	if (not)
@@ -662,7 +662,7 @@ display_ps()
 				snprintf(buf, sizeof buf, "%-8s ", cp);
 				}
 			print(buf);
-			if (!keep && compare(buf, grep_filter))
+			if (!keep && grep_compare(buf))
 				keep = TRUE;
 			}
 
@@ -675,7 +675,7 @@ display_ps()
 				(pip->pi_psinfo.pr_size * pagesize) / 1024,
 				pip->pi_pid);
 			set_attribute(YELLOW, BLACK, 0);
-			if (!keep && compare(pip->pi_cmdline, grep_filter))
+			if (!keep && grep_compare(pip->pi_cmdline))
 				keep = TRUE;
 			if (keep) {
 				print(pip->pi_cmdline);
@@ -725,7 +725,7 @@ display_ps()
 				break;
 			  }
 			print(buf);
-			if (!keep && compare(buf, grep_filter))
+			if (!keep && grep_compare(buf))
 				keep = TRUE;
 			}
 
@@ -838,7 +838,7 @@ display_ps()
 		if (is_visible("COMMAND")) {
 			char	*cp1;
 			cmd = pip->pi_cmdline;
-			if (!keep && compare(cmd, grep_filter))
+			if (!keep && grep_compare(cmd))
 				keep = TRUE;
 			max_len = screen_width - dst_x;
 			len = (int) strlen(cmd);

@@ -686,12 +686,18 @@ mon_name(int i)
 /**********************************************************************/
 /*   Get delta netstat info.					      */
 /**********************************************************************/
+static socket_t *fd_list;
+static int	fd_size;
+static int	fd_used;
+
 void
 mon_netstat(void)
 {
 #if !defined(MAIN)
 	procinfo_t	*pinfo;
 	int	i, num;
+	socket_t *old_fd_list;
+	int	old_used;
 	FILE	*fp;
 	FILE	*fp1;
 	char	buf[BUFSIZ];
@@ -709,9 +715,46 @@ mon_netstat(void)
 		}
 	chmod(buf, 0666);
 
+	old_fd_list = fd_list;
+	old_used = fd_used;
+
+	fd_size = 512;
+	fd_used = 0;
+	fd_list = chk_alloc(fd_size * sizeof *fd_list);
+
 	while (fgets(buf, sizeof buf, fp1) != NULL) {
-		fputs(buf, fp);
+		socket_t *sp;
+		int	ret;
+		if (fd_used + 1 >= fd_size) {
+			fd_size += 128;
+			fd_list = chk_realloc(fd_list, fd_size * sizeof *fd_list);
+			}
+
+		sp = &fd_list[fd_used++];
+		sp->s_time = time(NULL);
+		ret = sscanf(buf, " %*s %lx:%x %lx:%x %x %x:%x %*x:%*x %*x %d %*d %lu",
+			&sp->l_ip, &sp->l_port,
+			&sp->r_ip, &sp->r_port,
+			&sp->state,
+			&sp->sndwin,
+			&sp->rcvwin,
+			&sp->uid,
+			&sp->inode);
+		if (ret != 9) {
+			fd_used--;
+			continue;
+			}
+		for (i = 0; i < old_used; i++) {
+			if (sp->r_ip == old_fd_list[i].r_ip &&
+			    sp->r_port == old_fd_list[i].r_port &&
+			    sp->l_ip == old_fd_list[i].l_ip &&
+			    sp->l_port == old_fd_list[i].l_port) {
+			    	sp->s_time = old_fd_list[i].s_time;
+				break;
+				}
+			}
 	}
+	fwrite(fd_list, fd_used, sizeof *fd_list, fp);
 	fclose(fp);
 	fclose(fp1);
 	strcpy(buf2, buf1);
@@ -721,6 +764,7 @@ mon_netstat(void)
 		perror("rename");
 		exit(1);
 		}
+	chk_free(old_fd_list);
 #endif
 }
 /**********************************************************************/
@@ -813,51 +857,26 @@ get_num(char **str)
 int
 mon_read_netstat(int rel, socket_t **tblp)
 {	int	m;
+	struct stat sbuf;
 	char	buf[BUFSIZ];
-	FILE	*fp;
-	socket_t	*sp;
+	int	fd;
 	socket_t *tbl;
-	int	size;
-	int	used;
 
 	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
 	snprintf(buf, sizeof buf, "%s/proc/netstat.%04d", 
 		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
 		m);
-	if ((fp = fopen(buf, "r")) == NULL)
+	if (stat(buf, &sbuf) < 0)
 		return 0;
-	/***********************************************/
-	/*   Skip header.			       */
-	/***********************************************/
-	if (fgets(buf, sizeof buf, fp) == NULL) {
-		fclose(fp);
+
+	tbl = (socket_t *) chk_alloc(sbuf.st_size);
+	if ((fd = open(buf, O_RDONLY)) == NULL)
 		return 0;
-		}
+	read(fd, tbl, sbuf.st_size);
+	close(fd);
 
-	size = 50;
-	used = 0;
-	tbl = (socket_t *) chk_alloc(size * sizeof *tbl);
-
-	while (fgets(buf, sizeof buf, fp) != NULL) {
-		buf[strlen(buf)-1] = '\0';
-		if (used + 1 >= size) {
-			size += 100;
-			tbl = (socket_t *) chk_realloc(tbl, size * sizeof *tbl);
-			}
-
-		sp = &tbl[used++];
-		sscanf(buf, " %*s %lx:%x %lx:%x %x %x:%x %*x:%*x %*x %d %*d %lu",
-			&sp->l_ip, &sp->l_port,
-			&sp->r_ip, &sp->r_port,
-			&sp->state,
-			&sp->sndwin,
-			&sp->rcvwin,
-			&sp->uid,
-			&sp->inode);
-	}
-	fclose(fp);
 	*tblp = tbl;
-	return used;
+	return sbuf.st_size / sizeof *tbl;
 }
 /**********************************************************************/
 /*   Read the proc files.					      */

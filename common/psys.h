@@ -120,6 +120,7 @@ struct cpuinfo_t {
 /*   netstat/socket into.					      */
 /**********************************************************************/
 typedef struct socket_t {
+	time_t		s_time;
 	unsigned long	l_ip;
 	unsigned int	l_port;
 	unsigned long	r_ip;
@@ -146,10 +147,12 @@ extern int	quit_flag;
 extern int	sort_order;
 extern int	sort_type;
 extern FILE 	*log_fp;
+extern char	*grep_filter;
 
 /**********************************************************************/
 /*   Prototypes.						      */
 /**********************************************************************/
+int grep_compare(char *str);
 void	*chk_zalloc(size_t);
 procinfo_t	*proc_get_proclist(int *);
 void	error_message(char *, ...);

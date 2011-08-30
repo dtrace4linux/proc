@@ -1,3 +1,10 @@
+Tue Aug 30 21:09:39 2011  fox
+
+      34* netstat.c: Sort sockets into new/time order. Highlight new sockets.
+          Add support for grep on state.
+
+      33* netstat.c: Add port name cache.
+
 Mon Aug 29 20:34:22 2011  fox
 
       32* netstat.c: Various fixes/enhancements. Still work in progress.

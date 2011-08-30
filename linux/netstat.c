@@ -5,6 +5,7 @@
 # include	<netdb.h>
 # include	<netinet/tcp.h>
 # include	<dirent.h>
+# include	<../foxlib/hash.h>
 
 /**********************************************************************/
 /*   Info to cache socket inodes to owning procs.		      */
@@ -16,6 +17,8 @@ typedef struct fd_list_t {
 static fd_list_t *fd_list;
 static int	fd_size = 256;
 static int	fd_used;
+
+hash_t	*hash_serv;
 
 static char *tcp_states[] = {
   "unknown",
@@ -38,6 +41,34 @@ static char *tcp_states[] = {
 /**********************************************************************/
 static void read_fds(void);
 
+char *
+getport(unsigned int ip, char *proto)
+{	struct servent *sp;
+	char	*cp;
+	char	buf[64];
+
+	if (hash_serv == NULL)
+		hash_serv = hash_create(256, 256);
+	cp = hash_int_lookup(hash_serv, ip);
+	if (cp)
+		return cp;
+
+	sp = getservbyport(ip, proto);
+	if (!sp) {
+		snprintf(buf, sizeof buf, "%u", ip);
+		cp = chk_strdup(buf);
+		}
+	else
+		cp = chk_strdup(sp->s_name);
+	hash_int_insert(hash_serv, ip, cp);
+	return cp;
+}
+int
+netstat_sort(socket_t *p1, socket_t *p2)
+{
+	return p2->s_time - p1->s_time;
+}
+
 void
 display_netstat()
 {	int	cnt;
@@ -54,7 +85,14 @@ display_netstat()
 	memset(&sin, 0, sizeof sin);
 
 	cnt = mon_read_netstat(0, &tbl);
+	if (cnt == 0) {
+		print("Sorry - netstat info not available. Try later.\n");
+		return;
+		}
+
 	read_fds();
+
+	qsort(tbl, cnt, sizeof *tbl, netstat_sort);
 
 	set_attribute(GREEN, BLACK, 0);
 	print("%d sockets: ", cnt);
@@ -74,67 +112,97 @@ display_netstat()
 	print("OWNER    rcv/snd  State        Local address       Remote address\n");
 	for (i = 0; i < cnt; i++) {
 		long	ip;
-		char	*name = NULL;
+		char	*port_name;
+		char	*name;
 		char	port[128];
 		struct hostent *hp = NULL;
 		struct hostent *hp2 = NULL;
 		sin.sin_family = AF_INET;
+		int	keep = FALSE;
+
+		if (grep_compare(tcp_states[tbl[i].state]))
+			keep = TRUE;
+		if (grep_compare(username(tbl[i].uid)))
+			keep = TRUE;
 
 		/***********************************************/
 		/*   Local address.			       */
 		/***********************************************/
-		sp = getservbyport(htons(tbl[i].l_port), "tcp");
-		if (sp)
-			snprintf(port, sizeof port, sp->s_name);
-		else
-			snprintf(port, sizeof port, "%u", tbl[i].l_port);
-		if (switches['n' & 0x1f] == 0) {
-			ip = htonl(tbl[i].l_ip);
-			if (ip)
-				name = hostname(ip);
-			}
-		if (name)
-			snprintf(buf, sizeof buf, "%s:%s", name, port);
-		else
-			snprintf(buf, sizeof buf, "%ld.%ld.%ld.%ld:%s",
-				(tbl[i].l_ip >> 0) & 0xff,
-				(tbl[i].l_ip >> 8) & 0xff,
-				(tbl[i].l_ip >> 16) & 0xff,
-				(tbl[i].l_ip >> 24) & 0xff,
-				port);
+		snprintf(buf, sizeof buf, "%ld.%ld.%ld.%ld:%u",
+			(tbl[i].l_ip >> 0) & 0xff,
+			(tbl[i].l_ip >> 8) & 0xff,
+			(tbl[i].l_ip >> 16) & 0xff,
+			(tbl[i].l_ip >> 24) & 0xff,
+			tbl[i].l_port);
 		/***********************************************/
 		/*   Remote address.			       */
 		/***********************************************/
-		sp = getservbyport(htons(tbl[i].r_port), "tcp");
-		if (sp)
-			snprintf(port, sizeof port, sp->s_name);
-		else
-			snprintf(port, sizeof port, "%u", tbl[i].r_port);
-		name = NULL;
-		if (tbl[i].state != TCP_LISTEN && switches['n' & 0x1f] == 0) {
-			ip = htonl(tbl[i].r_ip);
-			name = hostname(ip);
-			}
-		if (name)
-			snprintf(buf2, sizeof buf2, "%s:%s", name, port);
-		else
-			snprintf(buf2, sizeof buf2, "%ld.%ld.%ld.%ld:%s",
-				(tbl[i].r_ip >> 0) & 0xff,
-				(tbl[i].r_ip >> 8) & 0xff,
-				(tbl[i].r_ip >> 16) & 0xff,
-				(tbl[i].r_ip >> 24) & 0xff,
-				port);
+		snprintf(buf2, sizeof buf2, "%ld.%ld.%ld.%ld:%u",
+			(tbl[i].r_ip >> 0) & 0xff,
+			(tbl[i].r_ip >> 8) & 0xff,
+			(tbl[i].r_ip >> 16) & 0xff,
+			(tbl[i].r_ip >> 24) & 0xff,
+			tbl[i].r_port);
+
+		if (grep_compare(buf))
+			keep = TRUE;
+		if (grep_compare(buf2))
+			keep = TRUE;
+		if (!keep)
+			continue;
 
 		snprintf(buf3, sizeof buf3, "%u/%u",
 			tbl[i].rcvwin, tbl[i].sndwin);
-		set_attribute(GREEN, BLACK, 0);
+		if (tbl[i].s_time + 30 < time(NULL))
+			set_attribute(GREEN, BLACK, 0);
+		else
+			set_attribute(BLACK, CYAN, 0);
 		print("%-8s ", username(tbl[i].uid));
 		set_attribute(WHITE, BLACK, 0);
-		print("%-8s %-12s %-19s %-19s\n",
-			buf3,
-			tcp_states[tbl[i].state],
+		print("%-8s ", buf3);
+		set_attribute(WHITE, BLACK, 0);
+		if (tbl[i].state == TCP_ESTABLISHED)
+			set_attribute(YELLOW, BLACK, 0);
+		print("%-12s ", tcp_states[tbl[i].state]);
+		set_attribute(WHITE, BLACK, 0);
+		print("%-19s %-19s\n",
 			buf,
 			tbl[i].state == TCP_LISTEN ? "" : buf2);
+		/***********************************************/
+		/*   Local line.			       */
+		/***********************************************/
+		name = NULL;
+		port_name = getport(htons(tbl[i].l_port), "tcp");
+		if (port_name)
+			snprintf(port, sizeof port, port_name);
+		else {
+			snprintf(port, sizeof port, "%u", tbl[i].l_port);
+			}
+		ip = htonl(tbl[i].l_ip);
+		if (ip)
+			name = hostname(ip);
+		snprintf(buf, sizeof buf, "%s:%s", name ? name : "INADDR_ANY", port);
+		print("         Local:   %s\n", buf);
+		/***********************************************/
+		/*   Remote line.			       */
+		/***********************************************/
+		if (tbl[i].state != TCP_LISTEN) {
+			name = NULL;
+			port_name = getport(htons(tbl[i].r_port), "tcp");
+			if (port_name)
+				snprintf(port, sizeof port, port_name);
+			else {
+				snprintf(port, sizeof port, "%u", tbl[i].r_port);
+				}
+			ip = htonl(tbl[i].r_ip);
+			if (ip)
+				name = hostname(ip);
+			if (name)
+				snprintf(buf, sizeof buf, "%s:%s", name, port);
+			else
+				snprintf(buf, sizeof buf, "%s:%s", name, port);
+			print("         Remote:  %s\n", buf);
+		}
 		/***********************************************/
 		/*   Find the owning proc.		       */
 		/***********************************************/

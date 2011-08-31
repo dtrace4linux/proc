@@ -127,8 +127,13 @@ Detailed command summary
 ------------------------
 Process information
 Network information
-Disk
-CPU
+disk         Shows the details from /proc/diskstats. Graphs are shown
+             for each numeric field. It may be better to use the 'delta'
+	     mode, otherwise you will only see big numbers incrementing.
+
+CPU	     Shows the details from /proc/cpuinfo and the current MHz
+             speed of the cpu.
+
 grep [!]expr Use this command to restrict the view to lines which match
              or (!) do not match the patern. At present, the pattern
 	     is a literal match (no regexp support). Prefix the pattern
@@ -156,6 +161,9 @@ netstat      Show current socket information. Additional details include
 	     You can use the "grep" command to restrict the view to
 	     matching lines or non-matching lines. (Prefix grep
 	     pattern with "!", e.g. "grep !LISTEN").
+
+	     If the socket is new (less than about 20s), then the owner
+	     is displayed in reverse video.
 
 Open files / cache usage
 proc <pid>   Show details for a process, including /proc/pid/status,

@@ -1,3 +1,7 @@
+Wed Aug 31 22:08:15 2011  fox
+
+      35* netstat.c: Avoid potential port storm.
+
 Tue Aug 30 21:09:39 2011  fox
 
       34* netstat.c: Sort sockets into new/time order. Highlight new sockets.

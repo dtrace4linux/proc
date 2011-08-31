@@ -42,25 +42,33 @@ static char *tcp_states[] = {
 static void read_fds(void);
 
 char *
-getport(unsigned int ip, char *proto)
+getport(unsigned int port, char *proto)
 {	struct servent *sp;
 	char	*cp;
-	char	buf[64];
+static	char	buf[64];
+
+	/***********************************************/
+	/*   Avoid port storm.			       */
+	/***********************************************/
+	if (port >= 32768) {
+		snprintf(buf, sizeof buf, "%u", port);
+		return buf;
+		}
 
 	if (hash_serv == NULL)
 		hash_serv = hash_create(256, 256);
-	cp = hash_int_lookup(hash_serv, ip);
+	cp = hash_int_lookup(hash_serv, port);
 	if (cp)
 		return cp;
 
-	sp = getservbyport(ip, proto);
+	sp = getservbyport(port, proto);
 	if (!sp) {
-		snprintf(buf, sizeof buf, "%u", ip);
+		snprintf(buf, sizeof buf, "%u", port);
 		cp = chk_strdup(buf);
 		}
 	else
 		cp = chk_strdup(sp->s_name);
-	hash_int_insert(hash_serv, ip, cp);
+	hash_int_insert(hash_serv, port, cp);
 	return cp;
 }
 int
@@ -181,8 +189,15 @@ display_netstat()
 		ip = htonl(tbl[i].l_ip);
 		if (ip)
 			name = hostname(ip);
-		snprintf(buf, sizeof buf, "%s:%s", name ? name : "INADDR_ANY", port);
-		print("         Local:   %s\n", buf);
+		print("         Local:   ");
+		if (name == NULL) {
+			set_attribute(CYAN, BLACK, 0);
+			print("INADDR_ANY:");
+			set_attribute(WHITE, BLACK, 0);
+		} else {
+			print("%s:", name);
+			}
+		print("%s\n", port);
 		/***********************************************/
 		/*   Remote line.			       */
 		/***********************************************/

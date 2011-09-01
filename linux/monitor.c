@@ -153,8 +153,7 @@ main_procmon()
 
 	monitor_init();
 
-	snprintf(mon_fname, sizeof mon_fname, "/%s/proc/proc.mmap", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+	snprintf(mon_fname, sizeof mon_fname, "%s/proc.mmap", mon_dir());
 	stat(mon_fname, &sbuf);
 
 	mdir->md_pid = getpid();
@@ -234,8 +233,7 @@ monitor_init()
 	size = sizeof(mdir_t) + max_syms * sizeof(mdir_entry_t) + 
 			max_syms * max_ticks * sizeof(tick_t);
 
-	snprintf(mon_fname, sizeof mon_fname, "%s/proc", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+	snprintf(mon_fname, sizeof mon_fname, "%s/proc", mon_dir());
 	mkdir(mon_fname, 0777);
 
 	hash_syms = hash_create(128, 128);
@@ -434,6 +432,15 @@ monitor_start()
 	execve(buf, global_argv, NULL);
 	printf("exeve %s failed\n", buf);
 	exit(1);
+}
+
+char *
+mon_dir()
+{	static char buf[128];
+
+	snprintf(buf, sizeof buf, "%s/proc",
+			getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+	return buf;
 }
 
 int
@@ -704,8 +711,7 @@ mon_netstat(void)
 	char	buf1[BUFSIZ];
 	char	buf2[BUFSIZ];
 
-	snprintf(buf1, sizeof buf1, "%s/proc/netstat.%04d.tmp", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
+	snprintf(buf1, sizeof buf1, "%s/netstat.%04d.tmp", mon_dir(),
 		(int) mdir->md_first);
 	if ((fp1 = fopen("/proc/net/tcp", "r")) == NULL)
 		return;
@@ -750,6 +756,7 @@ mon_netstat(void)
 			    sp->l_ip == old_fd_list[i].l_ip &&
 			    sp->l_port == old_fd_list[i].l_port) {
 			    	sp->s_time = old_fd_list[i].s_time;
+			    	sp->uid = old_fd_list[i].uid;
 				break;
 				}
 			}
@@ -780,8 +787,7 @@ mon_procs(void)
 	char	buf[BUFSIZ];
 	char	buf1[BUFSIZ];
 
-	snprintf(buf, sizeof buf, "%s/proc/proc.%04d.tmp", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
+	snprintf(buf, sizeof buf, "%s/proc.%04d.tmp", mon_dir(),
 		(int) mdir->md_first);
 	if ((fp = fopen(buf, "w")) == NULL)
 		return;
@@ -863,9 +869,7 @@ mon_read_netstat(int rel, socket_t **tblp)
 	socket_t *tbl;
 
 	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
-	snprintf(buf, sizeof buf, "%s/proc/netstat.%04d", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
-		m);
+	snprintf(buf, sizeof buf, "%s/netstat.%04d", mon_dir(), m);
 	if (stat(buf, &sbuf) < 0)
 		return 0;
 
@@ -916,9 +920,7 @@ mon_read_procs()
 	mon_num_procs = mon_num_threads = 0;
 
 	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
-	snprintf(buf, sizeof buf, "%s/proc/proc.%04d", 
-		getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
-		m);
+	snprintf(buf, sizeof buf, "%s/proc.%04d", mon_dir(), m);
 	if ((fp = fopen(buf, "r")) == NULL)
 		return;
 	for (i = nproc = 0; fgets(buf, sizeof buf, fp); i++) {

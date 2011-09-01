@@ -39,7 +39,9 @@ static char *tcp_states[] = {
 /**********************************************************************/
 /*   Prototypes.						      */
 /**********************************************************************/
+static void load_portmap(void);
 static void read_fds(void);
+static void save_portmap(void);
 
 char *
 getport(unsigned int port, char *proto)
@@ -55,8 +57,11 @@ static	char	buf[64];
 		return buf;
 		}
 
-	if (hash_serv == NULL)
+	if (hash_serv == NULL) {
 		hash_serv = hash_create(256, 256);
+		load_portmap();
+		}
+
 	cp = hash_int_lookup(hash_serv, port);
 	if (cp)
 		return cp;
@@ -69,7 +74,46 @@ static	char	buf[64];
 	else
 		cp = chk_strdup(sp->s_name);
 	hash_int_insert(hash_serv, port, cp);
+	/***********************************************/
+	/*   Save the portmap state.		       */
+	/***********************************************/
+	save_portmap();
 	return cp;
+}
+static void
+load_portmap()
+{	FILE	*fp;
+	char	buf[BUFSIZ];
+
+	snprintf(buf, sizeof buf, "%s/services", mon_dir());
+	if ((fp = fopen(buf, "r")) == NULL)
+		return;
+	while (fgets(buf, sizeof buf, fp) != NULL) {
+		int	port;
+		sscanf(buf, "%d %s", &port, buf);
+		hash_int_insert(hash_serv, port, chk_strdup(buf));
+		}
+	fclose(fp);
+}
+static void
+save_portmap()
+{	FILE	*fp;
+	int	i;
+	char	buf[BUFSIZ];
+	hash_element_t **harray;
+
+	snprintf(buf, sizeof buf, "%s/services", mon_dir());
+	if ((fp = fopen(buf, "w")) == NULL)
+		return;
+	chmod(buf, 0666);
+	harray = hash_linear(hash_serv, HASH_UINT_COMPARE);
+	for (i = 0; i < hash_size(hash_serv); i++) {
+		fprintf(fp, "%u %s\n",
+			(int) hash_key(harray[i]),
+			hash_data(harray[i]));
+		}
+	chk_free(harray);
+	fclose(fp);
 }
 int
 netstat_sort(socket_t *p1, socket_t *p2)
@@ -182,7 +226,7 @@ display_netstat()
 		name = NULL;
 		port_name = getport(htons(tbl[i].l_port), "tcp");
 		if (port_name)
-			snprintf(port, sizeof port, port_name);
+			snprintf(port, sizeof port, "%s", port_name);
 		else {
 			snprintf(port, sizeof port, "%u", tbl[i].l_port);
 			}
@@ -205,7 +249,7 @@ display_netstat()
 			name = NULL;
 			port_name = getport(htons(tbl[i].r_port), "tcp");
 			if (port_name)
-				snprintf(port, sizeof port, port_name);
+				snprintf(port, sizeof port, "%s", port_name);
 			else {
 				snprintf(port, sizeof port, "%u", tbl[i].r_port);
 				}

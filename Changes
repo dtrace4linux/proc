@@ -1,3 +1,10 @@
+Thu Sep  1 22:54:55 2011  fox
+
+      37* monitor.c: When looking at a TIME_WAIT socket, try and maintain
+          the userid of the time wait original owner.
+
+      36* netstat.c: Add persistent port caching.
+
 Wed Aug 31 22:08:15 2011  fox
 
       35* netstat.c: Avoid potential port storm.

@@ -179,4 +179,5 @@ char	*syscall_name(int);
 int diff_time(struct timeval *tnow, struct timeval *tlast);
 void draw_graph(graph_t *g, int flags, char *item, int x, int y, int width, int height, double scale, int bg_color);
 graph_t * graphs_new(void);
+char *mon_dir(void);
 

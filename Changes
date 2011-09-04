@@ -1,3 +1,22 @@
+Sun Sep  4 17:48:44 2011  fox
+
+      43* proc.c: Do binary search to find original pids, instead of linear.
+
+      42* proc.c: Better handling of procmon terminating/restarting on us.
+
+      41* monitor.c: Avoid reading /proc/pid/syscall if we are not root
+          or its not our uid (performance).
+
+Sat Sep  3 22:14:10 2011  fox
+
+      40* proc.c, monitor.c: Add stale procmon detector.
+
+Fri Sep  2 22:39:23 2011  fox
+
+      39* monitor.c: Avoid pointless reads of /proc/self/syscall.
+
+      38* proc.c: Avoid double (pointless) read on /proc/pid/cmdline.
+
 Thu Sep  1 22:54:55 2011  fox
 
       37* monitor.c: When looking at a TIME_WAIT socket, try and maintain

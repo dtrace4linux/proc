@@ -180,4 +180,8 @@ int diff_time(struct timeval *tnow, struct timeval *tlast);
 void draw_graph(graph_t *g, int flags, char *item, int x, int y, int width, int height, double scale, int bg_color);
 graph_t * graphs_new(void);
 char *mon_dir(void);
+time_t mon_is_stale(void);
+void print_number3(char *buf, unsigned long long n, unsigned long long n0);
+void monitor_uninit(void);
+int read_syscall(int pid, int uid);
 

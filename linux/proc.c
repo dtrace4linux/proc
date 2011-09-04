@@ -113,7 +113,6 @@ void int_handler(void);
 void settings_load(void);
 void settings_save(void);
 
-static char *read_syscall(int pid);
 static unsigned long display_files_mincore(char *filename, struct stat *, int *);
 char	*basename(char *);
 static void usage(void);
@@ -642,6 +641,13 @@ display_ps()
 			}
 		}
 
+	if (num_procs == 0) {
+		set_attribute(RED, YELLOW, 0);
+		print("Sorry - for some reason we lost the proc info.\n");
+		set_attribute(GREEN, BLACK, 0);
+		return;
+		}
+
 	for (i = 0, pip = pinfo; i < num_procs && csr_y < screen_length; i++, pip++) {
 		int	keep = grep_filter ? FALSE : TRUE;
 
@@ -1081,6 +1087,7 @@ main_loop(void)
 	int	i, j, t;
 	int	first_time = TRUE;
 	int	pass = 0;
+	int	stale_displayed = FALSE;
 
 	settings_load();
 	monitor_start();
@@ -1162,6 +1169,18 @@ mvprint(5, 0, "pos=%d %d %llu\n", mon_pos, mon_tell(), (unsigned long long) mon_
 			mode == MODE_DELTA ? "delta" : "ranged");
 
 		out_flush();
+
+		t = mon_is_stale();
+		if (t > 10) {
+			mvprint(5, 0, "Warning: procmon process data is stale.\n");
+			monitor_uninit();
+			monitor_start();
+			stale_displayed = TRUE;
+		} else if (stale_displayed) {
+			mvprint(5, 0, "procmon data now up to date.\n");
+			stale_displayed = FALSE;
+		}
+
 		/***********************************************/
 		/*   Save  copy  of screen in case user wants  */
 		/*   to snapshot.			       */
@@ -1334,7 +1353,17 @@ int	last_proc_size;
 procinfo_t	*proc_array;
 int	proc_count;
 int	proc_size;
+
 int first_display = TRUE;
+
+int cnt;
+void *
+last_sort_search(void *vpid, void *elem)
+{	int pid = (int) (long) vpid;
+	procinfo_t	*p = elem;
+
+	return vpid - p->pi_psinfo.pr_pid;
+}
 
 static int
 proc_get_procdir(char *name, int root_dir, int *countp)
@@ -1342,19 +1371,18 @@ proc_get_procdir(char *name, int root_dir, int *countp)
 	struct dirent *de;
 	int	count = *countp;
 	prpsinfo_t *pip;
-	int	i, root_pid = -1;
+	procinfo_t *lp;
+	int	i;
 	struct stat sbuf;
 	char	buf[BUFSIZ];
 	int	num = 0;
 	int	n;
 
 	dirp = opendir(name);
-	if (dirp == (DIR *) NULL)
+	if (dirp == NULL)
 		return 0;
 
-	root_pid = atoi(name + 6);
-
-	while ((de = readdir(dirp)) != (struct dirent *) NULL) {
+	while ((de = readdir(dirp)) != NULL) {
 		int	is_thread = FALSE;
 
 		if (proc_view) {
@@ -1403,8 +1431,13 @@ proc_get_procdir(char *name, int root_dir, int *countp)
 
 		strcpy(proc_array[count].pi_name, de->d_name);
 		pip->pr_pid = proc_array[count].pi_pid = atoi(de->d_name[0] == '.' ? de->d_name+1 : de->d_name);
-		snprintf(buf, sizeof buf, "%s/%s", name, de->d_name);
-		proc_array[count].pi_cmdline = read_file(buf, "cmdline");
+// performance/memory issue
+		if (root_dir || 1) {
+			snprintf(buf, sizeof buf, "%s/%s", name, de->d_name);
+			proc_array[count].pi_cmdline = read_file(buf, "cmdline");
+			}
+		else 
+			proc_array[count].pi_cmdline = chk_strdup("(xx)");
 		gettimeofday(&pip->pr_tnow, 0);
 /*if (strstr(proc_array[count].pi_cmdline, "proc") == 0) continue;*/
 		if (stat(buf, &sbuf) >= 0)
@@ -1417,23 +1450,24 @@ proc_get_procdir(char *name, int root_dir, int *countp)
 		pip->pr_last_rssize = pip->pr_rssize;
 		pip->pr_isnew = first_display ? 0 : 4;
 
-		for (i = 0; i < last_proc_count; i++) {
-			if (last_proc_array[i].pi_pid == pip->pr_pid) {
-				pip->pr_last_size = last_proc_array[i].pi_psinfo.pr_size;
-				pip->pr_last_vsize = last_proc_array[i].pi_psinfo.pr_vsize;
-				pip->pr_last_rssize = last_proc_array[i].pi_psinfo.pr_rssize;
+// performance issue
+		lp = bsearch((void *) pip->pr_pid,
+			last_proc_array, last_proc_count, sizeof *last_proc_array,
+			last_sort_search);
+		if (lp) {
+			pip->pr_last_size = lp->pi_psinfo.pr_size;
+			pip->pr_last_vsize = lp->pi_psinfo.pr_vsize;
+			pip->pr_last_rssize = lp->pi_psinfo.pr_rssize;
 
-				pip->pr_last_stime = last_proc_array[i].pi_psinfo.pr_stime;
-				pip->pr_last_utime = last_proc_array[i].pi_psinfo.pr_utime;
-				pip->pr_tlast = last_proc_array[i].pi_psinfo.pr_tnow;
-				pip->pr_isnew = last_proc_array[i].pi_psinfo.pr_isnew-1;
-				pip->pr_pctcpu0 = last_proc_array[i].pi_psinfo.pr_pctcpu;
-				if (pip->pr_isnew < 0)
-					pip->pr_isnew = 0;
-				break;
-				}
+			pip->pr_last_stime = lp->pi_psinfo.pr_stime;
+			pip->pr_last_utime = lp->pi_psinfo.pr_utime;
+			pip->pr_tlast = lp->pi_psinfo.pr_tnow;
+			pip->pr_isnew = lp->pi_psinfo.pr_isnew-1;
+			pip->pr_pctcpu0 = lp->pi_psinfo.pr_pctcpu;
+			if (pip->pr_isnew < 0)
+				pip->pr_isnew = 0;
 			}
-		if (i >= last_proc_count) {
+		else {
 			pip->pr_tlast = last_tv;
 			pip->pr_last_vsize = pip->pr_vsize;
 			}
@@ -1473,6 +1507,11 @@ proc_get_proclist(int *nump)
 	return proc_array;
 }
 
+int
+last_sort_pid(procinfo_t *p1, procinfo_t *p2)
+{
+	return p2->pi_psinfo.pr_pid - p1->pi_psinfo.pr_pid;
+}
 procinfo_t *
 raw_proc_get_proclist(int *nump)
 {
@@ -1499,6 +1538,8 @@ raw_proc_get_proclist(int *nump)
 	SWAP(last_proc_count, proc_count, i);
 	SWAP(last_proc_size, proc_size, i);
 
+	qsort(last_proc_array, last_proc_count, sizeof *last_proc_array, last_sort_pid);
+
 	proc_count = 0;
 	if (proc_size == 0) {
 		proc_size = 200;
@@ -1521,7 +1562,7 @@ read_file(char *path, char *name)
 {
 static	char	*buf;
 static int	bsize = 1024;
-	int	fd, n, n1;
+	int	fd, n, n1, ret;
 	int	size = 0;
 
 	if (buf == NULL) {
@@ -1551,14 +1592,16 @@ static int	bsize = 1024;
 			bp = buf + size;
 			}
 
-		n = read(fd, bp, n - 1);
-		if (n <= 0)
+		ret = read(fd, bp, n - 1);
+		if (ret <= 0)
 			break;
-		for (n1 = 0; n1 < n; n1++) {
+		for (n1 = 0; n1 < ret; n1++) {
 			if (bp[n1] == '\0')
 				bp[n1] = ' ';
 			}
-		size += n;
+		size += ret;
+		if (ret < n - 1)
+			break;
 		}
 	buf[size++] = '\0';
 	close(fd);
@@ -1809,9 +1852,7 @@ read_system_map(void)
 /*   Sort processes into interesting order.			      */
 /**********************************************************************/
 int
-sort_pid(p1, p2)
-procinfo_t	*p1;
-procinfo_t	*p2;
+sort_pid(procinfo_t *p1, procinfo_t *p2)
 {	int	t;
 
 	if ((t = p2->pi_psinfo.pr_pid - p1->pi_psinfo.pr_pid) != 0)

@@ -30,7 +30,7 @@
 # include	<../foxlib/hash.h>
 # include	<sys/mman.h>
 
-# define	VERSION		9
+# define	VERSION		10
 # define	MAX_SYMS	3000
 # define	MAX_TICKS	1024
 
@@ -52,6 +52,7 @@ typedef struct mdir_t {
 	int		md_version;
 	int		md_revision;
 	int		md_pid;
+	time_t		md_mtime;
 	time_t		md_readers;
 	unsigned long	md_count;
 	unsigned long	md_max_syms;
@@ -91,15 +92,17 @@ extern int first_display;
 extern struct timeval last_tv;
 #endif
 
-/**********************************************************************/
-/*   Prototypes.						      */
-/**********************************************************************/
 #define TY_ONE_PER_LINE		0x001
 #define	TY_ONE_PER_LINE_UNITS	0x002
 #define	TY_NO_LABEL		0x004
 #define	TY_IGNORE_HEADER	0x008
 #define	TY_DISKSTATS		0x010
 #define	TY_IGNORE_HEADER2       0x020
+
+/**********************************************************************/
+/*   Prototypes.						      */
+/**********************************************************************/
+static void usage(void);
 static void mon_item(char *fname, char *name, int type);
 static void mon_set(char *vname, tick_t v);
 void monitor_list(int);
@@ -107,7 +110,6 @@ char	*basename(char *);
 static void mon_rehash(void);
 void mon_netstat(void);
 void mon_procs(void);
-int read_syscall(int pid);
 void monitor_read(void);
 void monitor_init(void);
 
@@ -134,8 +136,17 @@ do_switches(int argc, char **argv)
 			noexit = TRUE;
 			continue;
 			}
+		usage();
 		}
 }
+static void
+usage()
+{
+	fprintf(stderr, "procmon -- background data collector for 'proc'\n");
+	fprintf(stderr, "\n");
+	exit(1);
+}
+
 void
 reset_terminal()
 {
@@ -158,6 +169,9 @@ main_procmon()
 
 	mdir->md_pid = getpid();
 	old_mdir = *mdir;
+	if (getenv("PROCMON_SPAWNED_BY_PROC") == NULL)
+		noexit = 1;
+
 	while (1) {
 		if (mdir->md_version != old_mdir.md_version)
 			break;
@@ -194,6 +208,8 @@ main_procmon()
 
 		printf("%s getting data\n", time_str());
 		monitor_read();
+
+		mdir->md_mtime = time(NULL);
 
 		sleep(1);
 	}
@@ -233,7 +249,7 @@ monitor_init()
 	size = sizeof(mdir_t) + max_syms * sizeof(mdir_entry_t) + 
 			max_syms * max_ticks * sizeof(tick_t);
 
-	snprintf(mon_fname, sizeof mon_fname, "%s/proc", mon_dir());
+	snprintf(mon_fname, sizeof mon_fname, "%s", mon_dir());
 	mkdir(mon_fname, 0777);
 
 	hash_syms = hash_create(128, 128);
@@ -377,11 +393,7 @@ monitor_read()
 		printf("Symbol table too small max_syms=%lu, needed=%lu .. resizing\n", max_syms, mdir->md_count);
 
 		max_syms = mdir->md_count + 128;
-		munmap(mmap_addr, mmap_size);
-		unlink(mon_fname);
-		hash_clear(hash_syms, 0);
-		mmap_addr = NULL;
-		too_small = 0;
+		monitor_uninit();
 		sleep(1);
 		}
 }
@@ -429,9 +441,20 @@ monitor_start()
 	/***********************************************/
 	close(1);
 	open("/dev/null", O_WRONLY);
+	putenv("PROCMON_SPAWNED_BY_PROC=1");
 	execve(buf, global_argv, NULL);
 	printf("exeve %s failed\n", buf);
 	exit(1);
+}
+
+void
+monitor_uninit()
+{
+	munmap(mmap_addr, mmap_size);
+	unlink(mon_fname);
+	hash_clear(hash_syms, 0);
+	mmap_addr = NULL;
+	too_small = 0;
 }
 
 char *
@@ -450,6 +473,13 @@ mon_exists(char *name)
 	if ((n = (int) (long) hash_lookup(hash_syms, name)) == 0)
 		return 0;
 	return 1;
+}
+time_t
+mon_is_stale()
+{
+	time_t t = time(NULL) - mdir->md_mtime;
+
+	return t;
 }
 /**********************************************************************/
 /*   Read a /proc entry and parse it away into the mmap.	      */
@@ -796,7 +826,7 @@ mon_procs(void)
 	pinfo = raw_proc_get_proclist(&num);
 	for (i = 0; i < num; i++) {
 		prpsinfo_t *p = &pinfo[i].pi_psinfo;
-		p->pr_syscall = read_syscall(pinfo[i].pi_pid);
+		p->pr_syscall = read_syscall(pinfo[i].pi_pid, p->pr_uid);
 
 		fprintf(fp, "%d ", p->pr_pid);
 		fprintf(fp, "%d ", pinfo[i].pi_flags);
@@ -1102,10 +1132,14 @@ mon_tell()
 char *syscalls[MAX_SYSCALLS];
 
 int
-read_syscall(int pid)
-{	static char	buf[128];
+read_syscall(int pid, int uid)
+{	static char	buf[256];
 	int	fd, n;
-	int first_time = 1;
+static	int first_time = 1;
+static int myuid = -1;
+
+	if (myuid < 0)
+		myuid = getuid();
 
 	if (first_time < 0)
 		return -1;
@@ -1113,7 +1147,7 @@ read_syscall(int pid)
 	/***********************************************/
 	/*   Avoid opening a file if it doesnt exist.  */
 	/***********************************************/
-	if (first_time) {
+	if (first_time == 1) {
 		if ((fd = open("/proc/self/syscall", O_RDONLY)) < 0) {
 			first_time = -1;
 			return -1;
@@ -1121,6 +1155,12 @@ read_syscall(int pid)
 		first_time = FALSE;
 		close(fd);
 		}
+
+	/***********************************************/
+	/*   Dont try this if we are going to fail.    */
+	/***********************************************/
+	if (uid != myuid || myuid != 0)
+		return -1;
 
 	snprintf(buf, sizeof buf, "/proc/%d/syscall", pid);
 	if ((fd = open(buf, O_RDONLY)) < 0)

@@ -205,14 +205,19 @@ display_netstat()
 
 		snprintf(buf3, sizeof buf3, "%u/%u",
 			tbl[i].rcvwin, tbl[i].sndwin);
+
 		if (tbl[i].s_time + 30 < time(NULL))
 			set_attribute(GREEN, BLACK, 0);
 		else
 			set_attribute(BLACK, CYAN, 0);
 		print("%-8s ", username(tbl[i].uid));
+
 		set_attribute(WHITE, BLACK, 0);
+		if (tbl[i].rcvwin || tbl[i].sndwin)
+			set_attribute(BLACK, CYAN, 0);
 		print("%-8s ", buf3);
 		set_attribute(WHITE, BLACK, 0);
+
 		if (tbl[i].state == TCP_ESTABLISHED)
 			set_attribute(YELLOW, BLACK, 0);
 		print("%-12s ", tcp_states[tbl[i].state]);

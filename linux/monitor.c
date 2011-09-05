@@ -172,6 +172,8 @@ main_procmon()
 	if (getenv("PROCMON_SPAWNED_BY_PROC") == NULL)
 		noexit = 1;
 
+	time_str();
+	printf("%s procmon, pid=%d\n", time_str(), getpid());
 	while (1) {
 		if (mdir->md_version != old_mdir.md_version)
 			break;
@@ -756,14 +758,14 @@ mon_netstat(void)
 
 	fd_size = 512;
 	fd_used = 0;
-	fd_list = chk_alloc(fd_size * sizeof *fd_list);
+	fd_list = (socket_t *) chk_alloc(fd_size * sizeof *fd_list);
 
 	while (fgets(buf, sizeof buf, fp1) != NULL) {
 		socket_t *sp;
 		int	ret;
 		if (fd_used + 1 >= fd_size) {
 			fd_size += 128;
-			fd_list = chk_realloc(fd_list, fd_size * sizeof *fd_list);
+			fd_list = (socket_t *) chk_realloc(fd_list, fd_size * sizeof *fd_list);
 			}
 
 		sp = &fd_list[fd_used++];
@@ -904,9 +906,13 @@ mon_read_netstat(int rel, socket_t **tblp)
 		return 0;
 
 	tbl = (socket_t *) chk_alloc(sbuf.st_size);
-	if ((fd = open(buf, O_RDONLY)) == NULL)
+	if ((fd = open(buf, O_RDONLY)) < 0)
 		return 0;
-	read(fd, tbl, sbuf.st_size);
+	if (read(fd, tbl, sbuf.st_size) != sbuf.st_size) {
+		chk_free(tbl);
+		close(fd);
+		return 0;
+		}
 	close(fd);
 
 	*tblp = tbl;

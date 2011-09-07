@@ -98,6 +98,7 @@ extern struct timeval last_tv;
 #define	TY_IGNORE_HEADER	0x008
 #define	TY_DISKSTATS		0x010
 #define	TY_IGNORE_HEADER2       0x020
+#define	TY_NETSTAT		0x040
 
 /**********************************************************************/
 /*   Prototypes.						      */
@@ -386,6 +387,8 @@ monitor_read()
 		mon_item("/proc/softirqs",  NULL,	TY_IGNORE_HEADER);
 		mon_item("/proc/diskstats", NULL,	TY_DISKSTATS);
 		mon_item("/proc/net/dev",   "ifconfig", TY_IGNORE_HEADER | TY_IGNORE_HEADER2);
+		mon_item("/proc/net/netstat","proto",	TY_NETSTAT);
+		mon_item("/proc/net/snmp",   "proto",	TY_NETSTAT);
 		mon_netstat();
 		mon_procs();
 
@@ -489,15 +492,44 @@ mon_is_stale()
 static void
 mon_item(char *fname, char *lname, int type)
 {	FILE	*fp;
-	char	buf[BUFSIZ];
+	char	buf[4096];
 	char	var[BUFSIZ];
 	char	vname[BUFSIZ];
 	char	*vp, *vp1;
-	int	n;
+	int	i, n;
 	unsigned long long v;
 
 	if ((fp = fopen(fname, "r")) == NULL)
 		return;
+
+	/***********************************************/
+	/*   Handle netstat/stats here.		       */
+	/***********************************************/
+	if (type & TY_NETSTAT) {
+		char	tbuf[4096];
+		char	*titles[256];
+		char	*cp, *cp1;
+		while (fgets(tbuf, sizeof tbuf, fp)) {
+			for (n = 0, cp = strtok(tbuf, ": \n"); cp; cp = strtok(NULL, ": \n")) {
+				titles[n++] = cp;
+				if (n + 1 >= (int) (sizeof titles / sizeof titles[0]))
+					break;
+				}
+			if (fgets(buf, sizeof buf, fp) == NULL)
+				break;
+			cp = strtok(buf, ": ");
+			for (i = 1; i < n; i++) {
+				if ((cp = strtok(NULL, " \n")) == NULL)
+					break;
+				sscanf(cp, "%llu", &v);
+				snprintf(vname, sizeof vname, "%s.%s", titles[0], titles[i]);
+				mon_set(vname, v);
+				}
+			}
+		fclose(fp);
+		return;
+		}
+
 	if (type & TY_IGNORE_HEADER) {
 		if (fgets(buf, sizeof buf, fp)) {
 			}

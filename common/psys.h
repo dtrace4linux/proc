@@ -55,20 +55,26 @@
 /**********************************************************************/
 /*   Display modes.						      */
 /**********************************************************************/
-# define	DISPLAY_PROC	0
-# define	DISPLAY_KSTAT	1
-# define	DISPLAY_PS	2
-# define	DISPLAY_CMD	3
-# define	DISPLAY_FILES	4
-# define	DISPLAY_CPU	5
-# define	DISPLAY_NETSTAT	6
-# define	DISPLAY_DISK	7
-# define	DISPLAY_MEMINFO	8
-# define	DISPLAY_VMSTAT	9
-# define	DISPLAY_IRQ	10
-# define	DISPLAY_SOFTIRQS	11
-# define	DISPLAY_GRAPHS	12
-# define	DISPLAY_IFCONFIG	13
+enum {
+	DISPLAY_PROC,
+	DISPLAY_KSTAT,
+	DISPLAY_PS,
+	DISPLAY_CMD,
+	DISPLAY_FILES,
+	DISPLAY_CPU,
+	DISPLAY_NETSTAT,
+	DISPLAY_DISK,
+	DISPLAY_MEMINFO,
+	DISPLAY_VMSTAT,
+	DISPLAY_IRQ,
+	DISPLAY_SOFTIRQS,
+	DISPLAY_GRAPHS,
+	DISPLAY_IFCONFIG,
+	DISPLAY_TCP,
+	DISPLAY_UDP,
+	DISPLAY_ICMP,
+	DISPLAY_IP,
+	};
 
 /**********************************************************************/
 /*   Structure to describe a process on the system.		      */
@@ -184,4 +190,8 @@ time_t mon_is_stale(void);
 void print_number3(char *buf, unsigned long long n, unsigned long long n0);
 void monitor_uninit(void);
 int read_syscall(int pid, int uid);
+void	display_tcp(void);
+void	display_udp(void);
+void	display_icmp(void);
+void	display_ip(void);
 

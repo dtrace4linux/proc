@@ -13,7 +13,7 @@
 /*--------------------------------------------------------------------*/
 /*  Description:  Generic command handler for 'proc'                  */
 /*--------------------------------------------------------------------*/
-/*  $Header: Last edited: 24-Jul-2011 1.6 $ 			      */
+/*  $Header: Last edited: 06-Sep-2011 1.7 $ 			      */
 /**********************************************************************/
 
 # include	"psys.h"
@@ -40,75 +40,71 @@ static void	abs_func(int argc, char **argv);
 static void	agg_func(int argc, char **argv);
 static void	clear_func(int argc, char **argv);
 static void	count_func(int argc, char **argv);
-static void	cpu_func(int argc, char **argv);
 static void	delay_func(int argc, char **argv);
 static void	delta_func(int argc, char **argv);
-static void	disk_func(int argc, char **argv);
 static void	files_func(int argc, char **argv);
 static void	flush_func(int argc, char **argv);
-static void	graph_func(int argc, char **argv);
 static void	grep_func(int argc, char **argv);
 static void	help_func(int argc, char **argv);
 static void	hide_func(int argc, char **argv);
-static void	ifconfig_func(int argc, char **argv);
-static void	irq_func(int argc, char **argv);
 static void	kill_func(int argc, char **argv);
 static void	log_func(int argc, char **argv);
-static void	meminfo_func(int argc, char **argv);
 static void	netstat_func(int argc, char **argv);
 static void	order_func(int argc, char **argv);
 static void	proc_func(int argc, char **argv);
-static void	ps_func(int argc, char **argv);
 static void	quit_func(int argc, char **argv);
 static void	range_func(int argc, char **argv);
 static void	set_func(int argc, char **argv);
 static void	show_func(int argc, char **argv);
 static void	snap_func(int argc, char **argv);
-static void	softirqs_func(int argc, char **argv);
 static void	thread_func(int argc, char **argv);
 static void	units_func(int argc, char **argv);
-static void	vmstat_func(int argc, char **argv);
 void	shell_command();
 
 struct commands {
 	char	*c_command;
 	void	(*c_func)();
+	int	c_mode;
 	char	*c_help;
 	} commands[] = {
-	{"abs",		abs_func,	"Show absolute values."},
-	{"agg",		agg_func,	"Aggregate thread cpu into parent."},
-	{"clear",	clear_func,	"Clear counter values."},
-	{"count",	count_func,	"Start counting mode."},
-	{"cpu",		cpu_func,	"Show CPU details."},
-	{"delay",	delay_func,	"Set refresh delay."},
-	{"delta",	delta_func,	"Show delta values."},
-	{"disk",	disk_func,	"Show disk statistics.."},
-	{"files",	files_func,	"Show open file information"},
-	{"flush",	flush_func,	"Flush open file from disk cache"},
-	{"graph",	graph_func,	"Show common graphs"},
-	{"grep",	grep_func,	"Filter process output"},
-	{"help",	help_func,	"Display help"},
-	{"hide",	hide_func,	"Hide a column"},
-	{"ifconfig",	ifconfig_func,	"Show network interface stats"},
-	{"irq",		irq_func,	"Show IRQ stats"},
-	{"log",		log_func,	"[on | off] Enable/disable logging"},
-	{"meminfo",	meminfo_func,	"Memory info"},
-	{"netstat",	netstat_func,	"Show socket connections"},
-	{"order",	order_func,	"[[-]nprstuc] Normal; Proc; RSS; Size; Time; User; CPU"},
-	{"proc",	proc_func,	"Show specific proc"},
-	{"ps",		ps_func,	"Display process mode"},
-	{"quit",	quit_func,	"Exit from tool"},
-	{"range",	range_func,	"Show numbers in units/ranges"},
-	{"set",		set_func,	"Set options/limits."},
-	{"show",	show_func,	"Show a hidden column"},
-	{"snap",	snap_func,	"Dump snapshots to file to see history"},
-	{"softirqs",	softirqs_func,	"Show /proc/softirqs"},
-	{"thread",	thread_func,	"Toggle thread mode"},
-	{"units",	units_func,	"Show units on numbers"},
-	{"vmstat",	vmstat_func,	"Show vmstats"},
-	{"?",		help_func,	"Display help"},
-	{"!",		shell_command,	"Run a unix command repeatedly"},
-	{0,		NULL,		(char *) NULL}
+	{"abs",		abs_func,	-1,	"Show absolute values."},
+	{"agg",		agg_func,	-1,     "Aggregate thread cpu into parent."},
+	{"clear",	clear_func,	-1,     "Clear counter values."},
+	{"count",	count_func,	-1,     "Start counting mode."},
+	{"cpu",		NULL,		DISPLAY_CPU,     "Show CPU details."},
+	{"delay",	delay_func,	-1,     "Set refresh delay."},
+	{"delta",	delta_func,	-1,     "Show delta values."},
+	{"disk",	NULL,		DISPLAY_DISK,     "Show disk statistics.."},
+	{"files",	files_func,	-1,     "Show open file information"},
+	{"flush",	flush_func,	-1,     "Flush open file from disk cache"},
+	{"graph",	NULL,		DISPLAY_GRAPHS,     "Show common graphs"},
+	{"grep",	grep_func,	-1,     "Filter process output"},
+	{"help",	help_func,	-1,     "Display help"},
+	{"hide",	hide_func,	-1,     "Hide a column"},
+	{"icmp",	NULL,		DISPLAY_ICMP,	"Show ICMP stats"},
+	{"ifconfig",	NULL,		DISPLAY_IFCONFIG,     "Show network interface stats"},
+	{"ip",		NULL,		DISPLAY_IP,	"Show IP interface stats"},
+	{"irq",		NULL,		DISPLAY_IRQ,	"Show IRQ stats"},
+	{"log",		log_func,	-1,     "[on | off] Enable/disable logging"},
+	{"meminfo",	NULL,		DISPLAY_MEMINFO,     "Memory info"},
+	{"netstat",	netstat_func,	-1,     "Show socket connections"},
+	{"order",	order_func,	-1,     "[[-]nprstuc] Normal; Proc; RSS; Size; Time; User; CPU"},
+	{"proc",	proc_func,	-1,     "Show specific proc"},
+	{"ps",		NULL,		DISPLAY_PS,     "Display process mode"},
+	{"quit",	quit_func,	-1,     "Exit from tool"},
+	{"range",	range_func,	-1,     "Show numbers in units/ranges"},
+	{"set",		set_func,	-1,     "Set options/limits."},
+	{"show",	show_func,	-1,     "Show a hidden column"},
+	{"snap",	snap_func,	-1,     "Dump snapshots to file to see history"},
+	{"softirqs",	NULL,		DISPLAY_SOFTIRQS,     "Show /proc/softirqs"},
+	{"tcp",		NULL,		DISPLAY_TCP,     "Show TCP stats"},
+	{"thread",	thread_func,	-1,     "Toggle thread mode"},
+	{"udp",		NULL,		DISPLAY_UDP,     "Show UDP stats"},
+	{"units",	units_func,	-1,     "Show units on numbers"},
+	{"vmstat",	NULL,		DISPLAY_VMSTAT,     "Show vmstats"},
+	{"?",		help_func,	-1,     "Display help"},
+	{"!",		shell_command,	-1,     "Run a unix command repeatedly"},
+	{0,		NULL,		-1,     (char *) NULL}
 	};
 
 char	*grep_filter;
@@ -184,7 +180,10 @@ process_command(char *str)
 
 	for (cmdp = commands; cmdp->c_command; cmdp++) {
 		if (strncasecmp(argv[0], cmdp->c_command, strlen(argv[0])) == 0) {
-			(*cmdp->c_func)(argc, argv);
+			if (cmdp->c_mode != -1)
+				display_mode = cmdp->c_mode;
+			else
+				(*cmdp->c_func)(argc, argv);
 			break;
 			}
 		}
@@ -241,11 +240,6 @@ agg_func(int argc, char **argv)
 	display_error(agg_mode ? "Aggregate mode: on" : "Aggregate mode: off");
 }
 static void
-cpu_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_CPU;
-}
-static void
 delay_func(int argc, char **argv)
 {
 	if (argc != 2) {
@@ -255,11 +249,6 @@ delay_func(int argc, char **argv)
 	delay_time = atoi(argv[1]);
 	if (delay_time < 0)
 		delay_time = 1;
-}
-static void
-disk_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_DISK;
 }
 static void
 files_func(int argc, char **argv)
@@ -281,11 +270,6 @@ flush_func(int argc, char **argv)
 		return;
 		}
 	flush_content = atoi(argv[1]);
-}
-static void
-graph_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_GRAPHS;
 }
 static void
 grep_func(int argc, char **argv)
@@ -386,16 +370,6 @@ hide_func(int argc, char **argv)
 
 	mvprint(6, 0, "Unknown column name %s\n", argv[i]);
 	press_to_continue();
-}
-static void
-ifconfig_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_IFCONFIG;
-}
-static void
-irq_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_IRQ;
 }
 static void
 kill_func(int argc, char **argv)
@@ -501,11 +475,6 @@ log_func(int argc, char **argv)
 	display_error("Usage: log [on | off]");
 }
 static void
-meminfo_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_MEMINFO;
-}
-static void
 netstat_func(int argc, char **argv)
 {
 	display_mode = DISPLAY_NETSTAT;
@@ -541,11 +510,6 @@ proc_func(int argc, char **argv)
 
 	proc_id = atoi(argv[1]);
 	display_mode = DISPLAY_PROC;
-}
-static void
-ps_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_PS;
 }
 static void
 quit_func(int argc, char **argv)
@@ -645,11 +609,6 @@ snap_func(int argc, char **argv)
 	fclose(fp);
 	display_error("Snapped to /tmp/proc.snap.%03d.log", i);
 }
-static void
-softirqs_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_SOFTIRQS;
-}
 /**********************************************************************/
 /*   Toggle thread display.					      */
 /**********************************************************************/
@@ -667,9 +626,3 @@ units_func(int argc, char **argv)
 {
 	mode = MODE_RANGED;
 }
-static void
-vmstat_func(int argc, char **argv)
-{
-	display_mode = DISPLAY_VMSTAT;
-}
-

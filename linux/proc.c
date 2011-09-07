@@ -1112,21 +1112,6 @@ main_loop(void)
 		mvprint(6, 0, "");
 
 		switch (display_mode) {
-		  case DISPLAY_GRAPHS:
-		  	display_graphs();
-			break;
-		  case DISPLAY_KSTAT:
-		  	display_kstat();
-			break;
-		  case DISPLAY_MEMINFO:
-		  	display_meminfo();
-			break;
-		  case DISPLAY_PROC:
-		  	display_proc();
-			break;
-		  case DISPLAY_PS:
-		  	display_ps();
-			break;
 		  case DISPLAY_CMD:
 		  	shell_command((char *) NULL);
 			break;
@@ -1139,14 +1124,41 @@ main_loop(void)
 		  case DISPLAY_FILES:
 		  	display_files();
 			break;
+		  case DISPLAY_GRAPHS:
+		  	display_graphs();
+			break;
+		  case DISPLAY_ICMP:
+		  	display_ICMP();
+			break;
 		  case DISPLAY_IFCONFIG:
 		  	display_ifconfig();
+			break;
+		  case DISPLAY_IP:
+		  	display_IP();
+			break;
+		  case DISPLAY_KSTAT:
+		  	display_kstat();
+			break;
+		  case DISPLAY_MEMINFO:
+		  	display_meminfo();
 			break;
 		  case DISPLAY_NETSTAT:
 		  	display_netstat();
 			break;
+		  case DISPLAY_PROC:
+		  	display_proc();
+			break;
+		  case DISPLAY_PS:
+		  	display_ps();
+			break;
 		  case DISPLAY_SOFTIRQS:
 		  	display_softirqs();
+			break;
+		  case DISPLAY_TCP:
+		  	display_TCP();
+			break;
+		  case DISPLAY_UDP:
+		  	display_UDP();
 			break;
 		  case DISPLAY_VMSTAT:
 		  	display_vmstat();

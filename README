@@ -25,7 +25,9 @@ graph      Common graphs (loadavg, dirty memory, cached memory, etc)
 grep       Filter process output
 help       Display help
 hide       Hide a column
+icmp       Show IP/ICMP statistics
 ifconfig   Show network interface stats
+ip         Show IP/ICMP statistics
 irq        Show IRQ stats
 log        [on | off] Enable/disable logging
 meminfo    Memory info
@@ -39,7 +41,9 @@ set        Set options/limits.
 show       Show a hidden column
 snap       Dump snapshots to file to see history
 softirqs   Show /proc/softirqs
+tcp        Show TCP statistics
 thread     Toggle thread mode
+udp        Show UDP statistics
 units      Show units on numbers
 vmstat     Show vmstats
 ?          Display help
@@ -47,6 +51,15 @@ vmstat     Show vmstats
 
 Ctrl-B - page/back; Ctrl-F - page/fwd; Ctrl-R - reset paging
 Ctrl-L - redraw screen
+
+When viewing the statistics screens, you may find it useful to
+select "delta" mode if the statistics are monotonically increasing
+counters. This makes it easier to spot which ones are changing and
+how rapidly.
+
+You can use the "clear" command to reset the onscreen counters to
+make it easier to start a performance monitoring session or to just
+watch, removing the noise from the history prior to the viewing session.
 
 Header information
 ------------------

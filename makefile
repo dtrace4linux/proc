@@ -22,6 +22,7 @@ OBJ=	\
 	$(OBJDIR)/monitor.o \
 	$(OBJDIR)/netstat.o \
 	$(OBJDIR)/proc.o \
+	$(OBJDIR)/protocol.o \
 	$(OBJDIR)/screen.o \
 	$(OBJDIR)/streams.o \
 	$(OBJDIR)/softirqs.o \
@@ -127,6 +128,10 @@ $(OBJDIR)/netstat.o:	netstat.c $(H)
 $(OBJDIR)/proc.o:	proc.c $(H)
 	$(CC) -c proc.c
 	mv proc.o $(OBJDIR)
+
+$(OBJDIR)/protocol.o:	protocol.c $(H)
+	$(CC) -c protocol.c
+	mv protocol.o $(OBJDIR)
 
 $(OBJDIR)/screen.o:	../common/screen.c $(H)
 	$(CC) -c ../common/screen.c

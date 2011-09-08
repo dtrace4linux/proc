@@ -62,6 +62,7 @@ draw_graph(graph_t *g, int flags, char *item, int x, int y,
 	int width, int height, double scale, int bg_color)
 {	int	i;
 	char	buf[BUFSIZ];
+	unsigned long long v0 = 0;
 
 	graph_clear(g);
 	graph_setfont(g, "6x9");
@@ -79,7 +80,11 @@ draw_graph(graph_t *g, int flags, char *item, int x, int y,
 		unsigned long long v = mon_get_rel(item, i);
 		if (strncmp(item, "meminfo", 7) == 0)
 			v *= 1024;
-		graph_add(g, i, v / scale);
+		if (flags & 0x02 && i == -width)
+			;
+		else
+			graph_add(g, i, (flags & 0x02 ? v - v0 : v) / scale);
+		v0 = v;
 		}
 	graph_plot(g);
 

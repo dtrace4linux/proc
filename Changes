@@ -1,3 +1,7 @@
+Thu Sep  8 22:58:47 2011  fox
+
+      45* protocol.c, graph.c: Display minigraphs as delta values.
+
 Wed Sep  7 23:01:56 2011  fox
 
       44* Add: ip, icmp, udp, tcp - stats screens.

@@ -599,7 +599,7 @@ mon_find(char *prefix, int *width)
 {
 	int	i, j, len;
 
-	*width = 0;
+	/**width = 0;*/
 
 	if (harray == NULL)
 		harray = hash_linear(hash_syms, HASH_SORTED);

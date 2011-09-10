@@ -56,7 +56,6 @@ display_ifconfig()
 		/*   Draw graph.			       */
 		/***********************************************/
 		graph_clear(g);
-		graph_setfont(g, "6x9");
 		graph_setforeground(g, 0xffffff);
 		graph_setbackground(g, 0x80ffff);
 

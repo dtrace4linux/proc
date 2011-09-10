@@ -99,6 +99,7 @@ extern struct timeval last_tv;
 #define	TY_DISKSTATS		0x010
 #define	TY_IGNORE_HEADER2       0x020
 #define	TY_NETSTAT		0x040
+#define	TY_INTERRUPTS		0x080
 
 /**********************************************************************/
 /*   Prototypes.						      */
@@ -389,6 +390,7 @@ monitor_read()
 		mon_item("/proc/net/dev",   "ifconfig", TY_IGNORE_HEADER | TY_IGNORE_HEADER2);
 		mon_item("/proc/net/netstat","proto",	TY_NETSTAT);
 		mon_item("/proc/net/snmp",   "proto",	TY_NETSTAT);
+		mon_item("/proc/interrupts",   "irq",	TY_INTERRUPTS);
 		mon_netstat();
 		mon_procs();
 
@@ -495,12 +497,31 @@ mon_item(char *fname, char *lname, int type)
 	char	buf[4096];
 	char	var[BUFSIZ];
 	char	vname[BUFSIZ];
-	char	*vp, *vp1;
+	char	*cp, *vp, *vp1;
 	int	i, n;
 	unsigned long long v;
 
 	if ((fp = fopen(fname, "r")) == NULL)
 		return;
+
+	if (type & TY_INTERRUPTS) {
+		if (fgets(buf, sizeof buf, fp) == NULL) {
+			fclose(fp);
+			return;
+			}
+		while (fgets(buf, sizeof buf, fp) != NULL) {
+			char *title = strtok(buf, " :");
+			for (i = 0; (cp = strtok(NULL, ": ")) != NULL; i++) {
+				if (!isdigit(*cp))
+					break;
+				sscanf(cp, "%llu", &v);
+				snprintf(vname, sizeof vname, "interrupts.%s.%d", title, i);
+				mon_set(vname, v);
+				}
+			}
+		fclose(fp);
+		return;
+		}
 
 	/***********************************************/
 	/*   Handle netstat/stats here.		       */
@@ -508,7 +529,7 @@ mon_item(char *fname, char *lname, int type)
 	if (type & TY_NETSTAT) {
 		char	tbuf[4096];
 		char	*titles[256];
-		char	*cp, *cp1;
+		char	*cp1;
 		while (fgets(tbuf, sizeof tbuf, fp)) {
 			for (n = 0, cp = strtok(tbuf, ": \n"); cp; cp = strtok(NULL, ": \n")) {
 				titles[n++] = cp;
@@ -541,8 +562,8 @@ mon_item(char *fname, char *lname, int type)
 
 	while (fgets(buf, sizeof buf, fp)) {
 		int	len = strlen(buf);
-		char	*cp = buf;
-
+		
+		cp = buf;
 		if (len && buf[len-1] == '\n')
 			buf[--len] = '\0';
 		if (lname)

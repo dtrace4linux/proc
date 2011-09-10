@@ -84,7 +84,7 @@ struct commands {
 	{"icmp",	NULL,		DISPLAY_ICMP,	"Show ICMP stats"},
 	{"ifconfig",	NULL,		DISPLAY_IFCONFIG,     "Show network interface stats"},
 	{"ip",		NULL,		DISPLAY_IP,	"Show IP interface stats"},
-	{"irq",		NULL,		DISPLAY_IRQ,	"Show IRQ stats"},
+	{"interrupts",	NULL,		DISPLAY_INTERRUPTS,	"Show IRQ stats"},
 	{"log",		log_func,	-1,     "[on | off] Enable/disable logging"},
 	{"meminfo",	NULL,		DISPLAY_MEMINFO,     "Memory info"},
 	{"netstat",	netstat_func,	-1,     "Show socket connections"},

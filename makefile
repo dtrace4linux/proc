@@ -17,6 +17,7 @@ OBJ=	\
 	$(OBJDIR)/graph.o \
 	$(OBJDIR)/graphs.o \
 	$(OBJDIR)/ifconfig.o \
+	$(OBJDIR)/interrupts.o \
 	$(OBJDIR)/kernel.o \
 	$(OBJDIR)/meminfo.o \
 	$(OBJDIR)/monitor.o \
@@ -108,6 +109,10 @@ $(OBJDIR)/graphs.o:	graphs.c $(H)
 $(OBJDIR)/ifconfig.o:	ifconfig.c $(H)
 	$(CC) -c ifconfig.c
 	mv ifconfig.o $(OBJDIR)
+
+$(OBJDIR)/interrupts.o:	interrupts.c $(H)
+	$(CC) -c interrupts.c
+	mv interrupts.o $(OBJDIR)
 
 $(OBJDIR)/kernel.o:	kernel.c $(H)
 	$(CC) -c kernel.c

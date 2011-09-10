@@ -1,3 +1,13 @@
+Sat Sep 10 22:36:43 2011  fox
+
+      48* Add interrupts command, along with graphs.
+
+Fri Sep  9 21:28:28 2011  fox
+
+      47* proc.c: Fix EVENT field for 64-bit wchan
+
+      46* proc.c: Make sure we turn off graph mode on ^C/quit.
+
 Thu Sep  8 22:58:47 2011  fox
 
       45* protocol.c, graph.c: Display minigraphs as delta values.

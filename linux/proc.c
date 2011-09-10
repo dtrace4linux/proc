@@ -197,6 +197,7 @@ main(int argc, char **argv)
 
 	main_loop();
 
+	graph_finish();
 	end_screen();
 
 	return 0;
@@ -1065,6 +1066,7 @@ get_value(char *cp)
 void
 int_handler()
 {
+	graph_finish();
 	end_screen();
 	exit(0);
 }
@@ -1135,6 +1137,9 @@ main_loop(void)
 			break;
 		  case DISPLAY_IP:
 		  	display_IP();
+			break;
+		  case DISPLAY_INTERRUPTS:
+		  	display_interrupts();
 			break;
 		  case DISPLAY_KSTAT:
 		  	display_kstat();
@@ -1675,10 +1680,10 @@ read_proc_status(char *name, int pid, procinfo_t *pp)
 			"%ld %ld %ld %ld %ld %ld " /* 13-18 cutime cstime pri nice timeout it_real_value */
 			"%lu %llu " /* 19-20 start_time vsize */
 			"%ld " /* 21 rssize */
-		        "%lu %lu %lu %lu %lu %lu " /* 22-27 */
-			"%*s %*s %*s %*s " /* 28-31
-						discard, no RT signals & Linux 2.1 used hex */
-			"%lu %lu %lu %*d %d " /* 32-36 */
+		        "%lu %lu %lu %lu " 	/* 22-25 rsslim startcode endcode startstack */
+			"%lu %lu " 		/* 26-27 kstkesp kstkeip */
+			"%*s %*s %*s %*s " /* 28-31 signal blocked sigignore sigcatch */
+			"%lu %llu %lu %*d %d " /* 32-36 wchan nswap cnswap exit_sig processor */
 			"%u %u %llu %lu %ld" /* rt_prio, policy, delayacct_blkio_ticks, guest_time cguest_time */
 			,
 			&pip->pr_state,

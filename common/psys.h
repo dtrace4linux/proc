@@ -56,24 +56,24 @@
 /*   Display modes.						      */
 /**********************************************************************/
 enum {
-	DISPLAY_PROC,
-	DISPLAY_KSTAT,
-	DISPLAY_PS,
 	DISPLAY_CMD,
-	DISPLAY_FILES,
 	DISPLAY_CPU,
-	DISPLAY_NETSTAT,
 	DISPLAY_DISK,
-	DISPLAY_MEMINFO,
-	DISPLAY_VMSTAT,
-	DISPLAY_IRQ,
-	DISPLAY_SOFTIRQS,
+	DISPLAY_FILES,
 	DISPLAY_GRAPHS,
+	DISPLAY_ICMP,
 	DISPLAY_IFCONFIG,
+	DISPLAY_INTERRUPTS,
+	DISPLAY_IP,
+	DISPLAY_KSTAT,
+	DISPLAY_MEMINFO,
+	DISPLAY_NETSTAT,
+	DISPLAY_PROC,
+	DISPLAY_PS,
+	DISPLAY_SOFTIRQS,
 	DISPLAY_TCP,
 	DISPLAY_UDP,
-	DISPLAY_ICMP,
-	DISPLAY_IP,
+	DISPLAY_VMSTAT,
 	};
 
 /**********************************************************************/
@@ -194,4 +194,5 @@ void	display_tcp(void);
 void	display_udp(void);
 void	display_icmp(void);
 void	display_ip(void);
+void	display_interrupts(void);
 

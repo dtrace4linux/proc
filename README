@@ -28,7 +28,7 @@ hide       Hide a column
 icmp       Show IP/ICMP statistics
 ifconfig   Show network interface stats
 ip         Show IP/ICMP statistics
-irq        Show IRQ stats
+interrupts Show /proc/interrupts
 log        [on | off] Enable/disable logging
 meminfo    Memory info
 netstat    Show socket information

@@ -43,6 +43,7 @@ int	too_small;
 int	noexit;
 
 static char mon_fname[256];
+static ino_t inode;
 static int old_pos;
 hash_t	*hash_syms;
 static unsigned long max_syms = MAX_SYMS;
@@ -238,6 +239,7 @@ monitor_init()
 	char	*cp;
 	mdir_t	hdr;
 	static int first_time = TRUE;
+	struct stat sbuf;
 
 	if (mmap_addr)
 		return;
@@ -291,9 +293,22 @@ monitor_init()
 		size = sizeof(mdir_t) + max_syms * sizeof(mdir_entry_t) + 
 				max_syms * max_ticks * sizeof(tick_t);
 		}
+	stat(mon_fname, &sbuf);
+	if (size > sbuf.st_size) {
+		printf("procmon: %s corrupt size\n", mon_fname);
+		printf("  expected %d\n", size);
+		printf("  actual   %lu\n", sbuf.st_size);
+		printf("  hdr.max_syms =%d\n", hdr.md_max_syms);
+		printf("  hdr.max_ticks=%d\n", hdr.md_max_ticks);
+		unlink(mon_fname);
+		exit(1);
+		}
+
 	mmap_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	mmap_size = size;
 	close(fd);
+
+	inode = sbuf.st_ino;
 
 	mdir = mmap_addr;
 	pid = mdir->md_pid;
@@ -416,7 +431,10 @@ monitor_start()
 		kill(mdir->md_pid, SIGTERM);
 		mdir->md_pid = 0;
 		}
+	
+	signal(SIGCHLD, SIG_IGN);
 	if (mdir->md_pid != 0 || (!debugmon && fork() != 0)) {
+		sleep(1);
 		while (mon_exists("time") == FALSE) {
 			mon_rehash();
 			}
@@ -460,6 +478,7 @@ monitor_uninit()
 	munmap(mmap_addr, mmap_size);
 	unlink(mon_fname);
 	hash_clear(hash_syms, 0);
+	hash_syms = NULL;
 	mmap_addr = NULL;
 	too_small = 0;
 }
@@ -694,7 +713,15 @@ mon_get_item(int n, int rel)
 /**********************************************************************/
 unsigned long long
 mon_get_time()
-{
+{	struct stat sbuf;
+
+	if (stat(mon_fname, &sbuf) < 0 || sbuf.st_ino != inode) {
+		return (unsigned long long) -1;
+		}
+	/***********************************************/
+	/*   Check in case the monitor changed pid.    */
+	/***********************************************/
+	
 	/***********************************************/
 	/*   Let mon proc know someone is watching.    */
 	/***********************************************/
@@ -1022,10 +1049,11 @@ mon_read_procs()
 				proc_array = chk_zalloc(proc_size * sizeof *proc_array);
 				}
 			else {
+				int	delta = 250;
 				proc_array = (procinfo_t *) chk_realloc(proc_array, 
-					(proc_size + 250) * sizeof *proc_array);
-				memset(proc_array + proc_size, 0, 250 * sizeof *proc_array);
-				proc_size += 250;
+					(proc_size + delta) * sizeof *proc_array);
+				memset(proc_array + proc_size, 0, delta * sizeof *proc_array);
+				proc_size += delta;
 				}
 			}
 		p = &proc_array[nproc].pi_psinfo;

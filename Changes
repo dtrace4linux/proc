@@ -1,3 +1,7 @@
+Wed Sep 14 21:40:17 2011  fox
+
+      49* proc.c, monitor.c: Better handling of corrupt/missing pmap files.
+
 Sat Sep 10 22:36:43 2011  fox
 
       48* Add interrupts command, along with graphs.

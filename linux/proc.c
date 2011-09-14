@@ -73,6 +73,7 @@ const int Hertz = 100;
 int	killmon;
 int	debugmon;
 int	pagesize;
+int	fast_poll;
 int	sort_order = -1;
 int	sort_type = SORT_NORMAL;
 int	proc_id;	/* Process ID to display in detail. */
@@ -928,6 +929,11 @@ do_switches(int argc, char **argv)
 			debugmon = TRUE;
 			continue;
 			}
+		if (strcmp(cp, "fast_poll") == 0) {
+			fast_poll = TRUE;
+			continue;
+			}
+
 		if (strcmp(cp, "killmon") == 0) {
 			killmon = TRUE;
 			continue;
@@ -1090,6 +1096,7 @@ main_loop(void)
 	int	first_time = TRUE;
 	int	pass = 0;
 	int	stale_displayed = FALSE;
+	unsigned long long lt0 = 0, lt = 0;
 
 	settings_load();
 	monitor_start();
@@ -1100,6 +1107,33 @@ main_loop(void)
 			need_resize = FALSE;
 			init_display(0, 0);
 			screen_length = rows;
+			}
+
+		/***********************************************/
+		/*   Avoid refreshing if nothing changed.      */
+		/***********************************************/
+		lt0 = lt;
+		lt = mon_get_time();
+		if (lt0 == lt) {
+			struct timeval tval = {0, 50 * 1000};
+			select(0, NULL, NULL, NULL, &tval);
+			if (lt == (unsigned long long) -1) {
+				set_attribute(RED, YELLOW, 0);
+				mvprint(5, 0, "Status pmap is missing - will refresh when procmon restarts.");
+				set_attribute(GREEN, BLACK, 0);
+				clear_to_eol();
+				refresh();
+				monitor_uninit();
+				monitor_start();
+				stale_displayed = 2;
+				}
+			else if (stale_displayed == 2) {
+				mvprint(5, 0, "");
+				clear_to_eol();
+				refresh();
+				stale_displayed = FALSE;
+				}
+			continue;
 			}
 
 		mon_lock();
@@ -1432,7 +1466,6 @@ proc_get_procdir(char *name, int root_dir, int *countp)
 		/*   Watch  out  for  a  thread  matching the  */
 		/*   parent pid.			       */
 		/***********************************************/
-
 		if (count + 1 >= proc_size) {
 			proc_size += 400;
 			proc_array = (procinfo_t *) chk_realloc((void *) proc_array,
@@ -2141,6 +2174,7 @@ usage()
 	printf("\n");
 	printf("    -batch     Dont use color or escape sequences\n");
 	printf("    -c N       Run at most N times\n");
+	printf("    -fast_poll Fast screen refresh (used for debugging).\n");
 	printf("    -killmon   Kill any existing child monitoring process.\n");
 	printf("    -cols NN   Set screen size to NN columns, rather than autodetect.\n");
 	printf("    -rows NN   Set screen size to NN rows, rather than autodetect.\n");
@@ -2214,9 +2248,18 @@ static int first_time = TRUE;
 		tval.tv_sec = first_time ? 1 : delay_time;
 		first_time = FALSE;
 		tval.tv_usec = 0;
-		n = select(32, &rbits, (fd_set *) NULL, (fd_set *) NULL, &tval);
-		if (n <= 0)
-			return;
+		if (cp == buf) {
+			/***********************************************/
+			/*   For debugging.			       */
+			/***********************************************/
+			if (fast_poll) {
+				tval.tv_sec = 0;
+				tval.tv_usec = 10000;
+				}
+			n = select(32, &rbits, (fd_set *) NULL, (fd_set *) NULL, &tval);
+			if (n <= 0)
+				return;
+			}
 
 		if (read(1, &ch, 1) != 1)
 			continue;

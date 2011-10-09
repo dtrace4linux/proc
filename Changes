@@ -1,3 +1,12 @@
+Sun Oct  9 10:25:14 2011  fox
+
+      51* monitor.c: Better atomic updating.
+
+Tue Sep 20 21:18:20 2011  fox
+
+      50* monitor.c: Avoid pathological condition with procmon dying and us
+          spinning the cpu.
+
 Wed Sep 14 21:40:17 2011  fox
 
       49* proc.c, monitor.c: Better handling of corrupt/missing pmap files.

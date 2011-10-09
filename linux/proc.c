@@ -1112,10 +1112,12 @@ main_loop(void)
 		/***********************************************/
 		/*   Avoid refreshing if nothing changed.      */
 		/***********************************************/
+		mon_lock();
 		lt0 = lt;
 		lt = mon_get_time();
 		if (lt0 == lt) {
 			struct timeval tval = {0, 50 * 1000};
+			mon_unlock();
 			select(0, NULL, NULL, NULL, &tval);
 			if (lt == (unsigned long long) -1) {
 				set_attribute(RED, YELLOW, 0);
@@ -1136,7 +1138,6 @@ main_loop(void)
 			continue;
 			}
 
-		mon_lock();
 		last_tv = tv_now;
 		gettimeofday(&tv_now, 0);
 

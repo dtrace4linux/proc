@@ -41,6 +41,8 @@ int	mon_num_procs;
 int	mon_num_threads;
 int	too_small;
 int	noexit;
+int	mon_snap;
+int	mon_snap2;
 
 static char mon_fname[256];
 static ino_t inode;
@@ -202,19 +204,19 @@ main_procmon()
 		if (sbuf.st_ino != sbuf1.st_ino)
 			break;
 
-		mdir->md_first = (mdir->md_first + 1) % max_ticks;
-
 		if (debugmon) {
 			printf("Tick, pid=%d first=%ld\n", getpid(), mdir->md_first);
 			}
 
+		mon_snap2 = (mdir->md_first + 1) % max_ticks;
 		gettimeofday(&tval, NULL);
 		mon_set("time", (tick_t) tval.tv_sec * 100 + tval.tv_usec / 10000);
 
-		printf("%s getting data\n", time_str());
+		printf("%s getting data %d\n", time_str(), mdir->md_first);
 		monitor_read();
 
 		mdir->md_mtime = time(NULL);
+		mdir->md_first = mon_snap2;
 
 		sleep(1);
 	}
@@ -350,13 +352,19 @@ void
 monitor_list(int entry)
 {	char	buf[BUFSIZ];
 	int	i, j;
+	struct stat sbuf;
 
 	monitor_init();
 	printf("Version : %d\n", mdir->md_version);
 	printf("Revision: %d\n", mdir->md_revision);
 	printf("PID     : %d", mdir->md_pid);
-	if (kill(mdir->md_pid, 0) < 0)
+	snprintf(buf, sizeof buf, "/proc/%d", mdir->md_pid);
+	if (mdir->md_pid == 0)
+		printf(" not running\n");
+	else if (kill(mdir->md_pid, 0) < 0)
 		printf(" (non-existant)\n");
+	else if (stat(buf, &sbuf) < 0)
+		printf(" %s entry missing\n", buf);
 	else {
 		printf("\n");
 		snprintf(buf, sizeof buf, "ps -fp %d", mdir->md_pid);
@@ -434,9 +442,18 @@ monitor_start()
 	
 	signal(SIGCHLD, SIG_IGN);
 	if (mdir->md_pid != 0 || (!debugmon && fork() != 0)) {
+		int	cnt;
 		sleep(1);
-		while (mon_exists("time") == FALSE) {
+		for (cnt = 0; mon_exists("time") == FALSE && cnt < 1000; cnt++) {
 			mon_rehash();
+			if (mon_exists("time"))
+				break;
+			sleep(1);
+			}
+		if (cnt >= 1000) {
+			printf("procmon is not running.\n");
+			reset_terminal();
+			exit(1);
 			}
 		return;
 		}
@@ -675,7 +692,7 @@ mon_get(char *name)
 		return -1;
 	ep = entry(n);
 	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	return tp[mon_pos < 0 ? (int) mdir->md_first : mon_pos];
+	return tp[mon_pos < 0 ? mon_snap : mon_pos];
 }
 
 unsigned long long
@@ -688,7 +705,7 @@ mon_get_rel(char *name, int rel)
 		return -1;
 	ep = entry(n);
 	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	n = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
+	n = mon_pos < 0 ? mon_snap : mon_pos;
 	n += rel;
 	if (n < 0)
 		n += max_ticks;
@@ -702,7 +719,7 @@ mon_get_item(int n, int rel)
 
 	ep = entry(n);
 	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	n = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
+	n = mon_pos < 0 ? mon_snap : mon_pos;
 	n += rel;
 	if (n < 0)
 		n += max_ticks;
@@ -744,6 +761,7 @@ mon_history()
 void
 mon_lock()
 {
+	mon_snap = mdir->md_first;
 	old_pos = mon_pos;
 	if (mon_pos < 0)
 		mon_pos = mdir->md_first;
@@ -824,7 +842,7 @@ mon_netstat(void)
 	char	buf2[BUFSIZ];
 
 	snprintf(buf1, sizeof buf1, "%s/netstat.%04d.tmp", mon_dir(),
-		(int) mdir->md_first);
+		(int) mon_snap2);
 	if ((fp1 = fopen("/proc/net/tcp", "r")) == NULL)
 		return;
 	if ((fp = fopen(buf1, "w")) == NULL) {
@@ -900,7 +918,7 @@ mon_procs(void)
 	char	buf1[BUFSIZ];
 
 	snprintf(buf, sizeof buf, "%s/proc.%04d.tmp", mon_dir(),
-		(int) mdir->md_first);
+		(int) mon_snap2);
 	if ((fp = fopen(buf, "w")) == NULL)
 		return;
 	chmod(buf, 0666);
@@ -980,7 +998,7 @@ mon_read_netstat(int rel, socket_t **tblp)
 	int	fd;
 	socket_t *tbl;
 
-	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
+	m = mon_pos < 0 ? mon_snap : mon_pos;
 	snprintf(buf, sizeof buf, "%s/netstat.%04d", mon_dir(), m);
 	if (stat(buf, &sbuf) < 0)
 		return 0;
@@ -1035,10 +1053,13 @@ mon_read_procs()
 	proc_running = proc_zombie = proc_stopped = 0;
 	mon_num_procs = mon_num_threads = 0;
 
-	m = mon_pos < 0 ? (int) mdir->md_first : mon_pos;
+	m = mon_pos < 0 ? (int) mon_snap : mon_pos;
 	snprintf(buf, sizeof buf, "%s/proc.%04d", mon_dir(), m);
-	if ((fp = fopen(buf, "r")) == NULL)
+	if ((fp = fopen(buf, "r")) == NULL) {
+printf("cannot open %s\n", buf);
+abort();
 		return;
+		}
 	for (i = nproc = 0; fgets(buf, sizeof buf, fp); i++) {
 		char	*cp = buf;
 		prpsinfo_t *p;
@@ -1205,7 +1226,7 @@ mon_set(char *vname, tick_t v)
 		}
 	ep = entry(n);
 	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	tp[mdir->md_first] = v;
+	tp[mon_snap2] = v;
 }
 int
 mon_tell()

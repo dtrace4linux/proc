@@ -86,6 +86,7 @@ int	agg_mode;
 int	have_task_dir;
 int	W_flag;
 
+extern procinfo_t	*proc_array;
 extern int	proc_zombie;
 extern int	proc_running;
 extern int	proc_stopped;
@@ -95,7 +96,7 @@ static int	arg_cols;
 struct timeval tv_now;
 struct timeval last_tv;
 procinfo_t	*pinfo;
-int	num_procs;
+extern int	num_procs;
 extern int	mon_num_procs;
 extern int	mon_num_threads;
 int	linux_version;
@@ -121,8 +122,6 @@ int is_visible(char *name);
 static int do_switches(int argc, char **argv);
 static void read_system_map(void);
 static void read_mem(void);
-static void read_proc_status(char *name, int pid, procinfo_t *pip);
-static char * read_file(char *path, char *name);
 long	get_counter(char *, char *, long *);
 void	stop_handler();
 void	win_handler();
@@ -749,6 +748,8 @@ display_ps()
 		/***********************************************/
 		if (is_visible("%CPU")) {
 			int d = (int) pip->pi_psinfo.pr_pctcpu;
+if (0)
+print(" d=%d ", d); else
 			if (d >= 1000)
 				print(" 100 ");
 			else
@@ -1397,158 +1398,6 @@ print_number3(char *buf, unsigned long long n, unsigned long long n0)
 	set_attribute(GREEN, BLACK, 0);
 }
 /**********************************************************************/
-/*   Read one subdir.						      */
-/**********************************************************************/
-procinfo_t	*last_proc_array;
-int	last_proc_count;
-int	last_proc_size;
-procinfo_t	*proc_array;
-int	proc_count;
-int	proc_size;
-
-int first_display = TRUE;
-
-int cnt;
-void *
-last_sort_search(void *vpid, void *elem)
-{	int pid = (int) (long) vpid;
-	procinfo_t	*p = elem;
-
-	return vpid - p->pi_psinfo.pr_pid;
-}
-
-static int
-proc_get_procdir(char *name, int root_dir, int *countp)
-{	DIR	*dirp;
-	struct dirent *de;
-	int	count = *countp;
-	prpsinfo_t *pip;
-	procinfo_t *lp;
-	int	i;
-	struct stat sbuf;
-	char	buf[BUFSIZ];
-	int	num = 0;
-	int	n;
-
-	dirp = opendir(name);
-	if (dirp == NULL)
-		return 0;
-
-	while ((de = readdir(dirp)) != NULL) {
-		int	is_thread = FALSE;
-
-		if (proc_view) {
-			if (!isdigit(de->d_name[0]))
-				continue;
-		} else {
-			if (isdigit(de->d_name[0]))
-				;
- 			else {
-				if (de->d_name[0] != '.' || !isdigit(de->d_name[1]))
-					continue;
-				is_thread = TRUE;
-				}
-		}
-
-		num++;
-		/***********************************************/
-		/*   Just attribute the sub-threads.	       */
-		/***********************************************/
-		if (proc_view && !root_dir)
-			continue;
-		/***********************************************/
-		/*   Skip  top proc entry since we may go for  */
-		/*   the underlying threads instead.	       */
-		/***********************************************/
-		if (have_task_dir && !proc_view && root_dir)
-			goto do_thread;
-
-		/***********************************************/
-		/*   Watch  out  for  a  thread  matching the  */
-		/*   parent pid.			       */
-		/***********************************************/
-		if (count + 1 >= proc_size) {
-			proc_size += 400;
-			proc_array = (procinfo_t *) chk_realloc((void *) proc_array,
-				proc_size * sizeof(procinfo_t));
-			}
-
-		memset(&proc_array[count], 0, sizeof (procinfo_t));
-		pip = &proc_array[count].pi_psinfo;
-		proc_array[count].pi_flags |= PI_PSINFO_VALID;
-		if (!root_dir) {
-			proc_array[count].pi_flags |= PI_IS_THREAD;
-			}
-
-		strcpy(proc_array[count].pi_name, de->d_name);
-		pip->pr_pid = proc_array[count].pi_pid = atoi(de->d_name[0] == '.' ? de->d_name+1 : de->d_name);
-// performance/memory issue
-		if (root_dir || 1) {
-			snprintf(buf, sizeof buf, "%s/%s", name, de->d_name);
-			proc_array[count].pi_cmdline = read_file(buf, "cmdline");
-			}
-		else 
-			proc_array[count].pi_cmdline = chk_strdup("(xx)");
-		gettimeofday(&pip->pr_tnow, 0);
-/*if (strstr(proc_array[count].pi_cmdline, "proc") == 0) continue;*/
-		if (stat(buf, &sbuf) >= 0)
-			pip->pr_uid = sbuf.st_uid;
-		else
-			pip->pr_uid = -1;
-
-		pip->pr_last_size = pip->pr_size;
-		pip->pr_last_vsize = pip->pr_vsize;
-		pip->pr_last_rssize = pip->pr_rssize;
-		pip->pr_isnew = first_display ? 0 : 4;
-
-// performance issue
-		lp = bsearch((void *) pip->pr_pid,
-			last_proc_array, last_proc_count, sizeof *last_proc_array,
-			last_sort_search);
-		if (lp) {
-			pip->pr_last_size = lp->pi_psinfo.pr_size;
-			pip->pr_last_vsize = lp->pi_psinfo.pr_vsize;
-			pip->pr_last_rssize = lp->pi_psinfo.pr_rssize;
-
-			pip->pr_last_stime = lp->pi_psinfo.pr_stime;
-			pip->pr_last_utime = lp->pi_psinfo.pr_utime;
-			pip->pr_tlast = lp->pi_psinfo.pr_tnow;
-			pip->pr_isnew = lp->pi_psinfo.pr_isnew-1;
-			pip->pr_pctcpu0 = lp->pi_psinfo.pr_pctcpu;
-			if (pip->pr_isnew < 0)
-				pip->pr_isnew = 0;
-			}
-		else {
-			pip->pr_tlast = last_tv;
-			pip->pr_last_vsize = pip->pr_vsize;
-			}
-
-		read_proc_status(name, pip->pr_pid, &proc_array[count]);
-		count++;
-
-		/***********************************************/
-		/*   See if we have any child threads.	       */
-		/***********************************************/
-do_thread:
-		if (!root_dir)
-			continue;
-
-		snprintf(buf, sizeof buf, "%s/%s/task", name, de->d_name);
-		*countp = count;
-		n = proc_get_procdir(buf, FALSE, countp);
-		if (proc_view) {
-			pip = &proc_array[count-1].pi_psinfo;
-			pip->pr_num_threads = n;
-			}
-		count = *countp;
-
-		}
-	closedir(dirp);
-
-	*countp = count;
-	return num;
-}
-/**********************************************************************/
 /*   Function to return an array of processes running on the system.  */
 /**********************************************************************/
 procinfo_t *
@@ -1558,57 +1407,10 @@ proc_get_proclist(int *nump)
 	return proc_array;
 }
 
-int
-last_sort_pid(procinfo_t *p1, procinfo_t *p2)
-{
-	return p2->pi_psinfo.pr_pid - p1->pi_psinfo.pr_pid;
-}
-procinfo_t *
-raw_proc_get_proclist(int *nump)
-{
-	char	*cp;
-	procinfo_t	*p;
-	int	i;
-	char	buf[BUFSIZ];
-
-	proc_running = proc_zombie = proc_stopped = 0;
-
-	/***********************************************/
-	/*   Swap  parray  and  last_proc_array so we can  */
-	/*   avoid malloc/free.			       */
-	/***********************************************/
-	for (i = 0; i < last_proc_count; i++) {
-		chk_free_ptr((void **) &last_proc_array[i].pi_cmdline);
-		}
-	for (i = 0; i < proc_count; i++) {
-		chk_free_ptr((void **) &proc_array[i].pi_cmdline);
-		}
-# define SWAP(a, b, t) t = a; a = b; b = t
-
-	SWAP(last_proc_array, proc_array, p);
-	SWAP(last_proc_count, proc_count, i);
-	SWAP(last_proc_size, proc_size, i);
-
-	qsort(last_proc_array, last_proc_count, sizeof *last_proc_array, last_sort_pid);
-
-	proc_count = 0;
-	if (proc_size == 0) {
-		proc_size = 200;
-		proc_array = (procinfo_t *) chk_alloc(sizeof(procinfo_t) * proc_size);
-		}
-
-	num_procs = 0;
-	proc_get_procdir("/proc", TRUE, &proc_count);
-	*nump = proc_count;
-	num_procs = proc_count;
-	first_display = FALSE;
-
-	return proc_array;
-}
 /**********************************************************************/
 /*   Read contents of a file into a memory block.		      */
 /**********************************************************************/
-static char *
+char *
 read_file(char *path, char *name)
 {
 static	char	*buf;
@@ -1676,109 +1478,6 @@ read_mem()
 	swap_free = mon_get("meminfo.SwapFree");
 	swap_used = swap_total - swap_free;
 
-}
-static void
-read_proc_status(char *name, int pid, procinfo_t *pp)
-{	char	*mem, *cp;
-	char	buf[1024];
-	char	cmd[1024], *bp;
-	int	i;
-	int	t;
-	prpsinfo_t *pip = &pp->pi_psinfo;
-
-	sprintf(buf, "%s/%d/stat", name, pid);
-	mem = read_file(buf, (char *) NULL);
-
-	cp = strchr(mem, '(');
-	if (cp && (pp->pi_cmdline[0] == '\0' || pp->pi_cmdline[0] == ' ')) {
-		cp++;
-		bp = cmd;
-		*bp++ = ' ';
-		*bp++ = '(';
-		while (*cp && *cp != ')')
-			*bp++ = *cp++;
-		*bp++ = ')';
-		*bp = '\0';
-		chk_free(pp->pi_cmdline);
-		pp->pi_cmdline = chk_strdup(cmd);
-		}
-	cp = strrchr(mem, ')');
-	if (cp) {
-		cp++;
-		while (isspace(*cp))
-			cp++;
-		sscanf(cp, 
-			"%c "			/* 0 */
-			"%d %d %d %d %d "	/* 1 ppid pgrp session tty tpgrp */
-			"%lu %lu %lu %lu %lu %lu %lu " /* 6-12 flags min_flt cmin_flt maj_flt cmaj_flt utime stime */
-			"%ld %ld %ld %ld %ld %ld " /* 13-18 cutime cstime pri nice timeout it_real_value */
-			"%lu %llu " /* 19-20 start_time vsize */
-			"%ld " /* 21 rssize */
-		        "%lu %lu %lu %lu " 	/* 22-25 rsslim startcode endcode startstack */
-			"%lu %lu " 		/* 26-27 kstkesp kstkeip */
-			"%*s %*s %*s %*s " /* 28-31 signal blocked sigignore sigcatch */
-			"%lu %llu %lu %*d %d " /* 32-36 wchan nswap cnswap exit_sig processor */
-			"%u %u %llu %lu %ld" /* rt_prio, policy, delayacct_blkio_ticks, guest_time cguest_time */
-			,
-			&pip->pr_state,
-			&pip->pr_ppid, &pip->pr_pgrp, &pip->pr_session, &pip->pr_tty, &pip->pr_tpgrp,
-			&pip->pr_flags, 
-				&pip->pr_min_flt, 
-				&pip->pr_cmin_flt, 
-				&pip->pr_maj_flt, 
-				&pip->pr_cmaj_flt, 
-				&pip->pr_utime, 
-				&pip->pr_stime,
-			&pip->pr_cutime, 
-				&pip->pr_cstime, 
-				&pip->pr_priority, 
-				&pip->pr_nice, 
-				&pip->pr_num_threads, 
-				&pip->pr_it_real_value,
-			&pip->pr_start_time, &pip->pr_vsize,
-			&pip->pr_rssize,
-			&pip->pr_rss_rlim, 
-				&pip->pr_start_code, 
-				&pip->pr_end_code, 
-				&pip->pr_start_stack, 
-				&pip->pr_kstk_esp, 
-				&pip->pr_kstk_eip,
-			&pip->pr_wchan, 
-				&pip->pr_nswap, 
-				&pip->pr_cnswap 
-				/* , &pip->pr_exit_signal  */, 
-				&pip->pr_lproc,
-			&pip->pr_rt_priority,
-				&pip->pr_policy,
-				&pip->pr_delayacct_blkio_ticks,
-				&pip->pr_guest_time,
-				&pip->pr_cguest_time);
-
-		}
-
-	switch (pip->pr_state) {
-	  case 'T':
-	  	proc_stopped++;
-		break;
-	  case 'Z':
-	  	proc_zombie++;
-		break;
-	  }
-
-	chk_free((void *) mem);
-
-	/***********************************************/
-	/*   Create  history  of  samples. We sort on  */
-	/*   these  to  get  a  decaying  average  of  */
-	/*   activity.				       */
-	/***********************************************/
-	memmove(&pip->pr_last_pctcpu[1], &pip->pr_last_pctcpu[0], (NUM_PCTCPU - 1) * sizeof(unsigned));
-	pip->pr_last_pctcpu[0] = pip->pr_pctcpu;
-	pip->pr_pctcpu = ((pip->pr_stime + pip->pr_utime) - (pip->pr_last_stime + pip->pr_last_utime));
-	t = diff_time(&pip->pr_tnow, &pip->pr_tlast);
-	pip->pr_pctcpu = (100 * pip->pr_pctcpu) / t;
-	pip->pr_pctcpu = 0.8 * pip->pr_pctcpu + 
-			 0.2 * pip->pr_pctcpu0;
 }
 /**********************************************************************/
 /*   Load user profile.						      */

@@ -63,7 +63,7 @@ sigdesc.h: ../common/sigconv.awk $(SIGNAL_H)
 $(OBJDIR)/proc: $(OBJDIR) $(OBJ)
 #	setuid root rm -f $(OBJDIR)/proc
 	$(PURIFY) $(CC) -o $(OBJDIR)/proc $(OBJ) $(CRISP_LIB) $(LIBS)
-	$(CC) -o $(OBJDIR)/monlist -DMAIN=1 monitor.c $(CRISP_LIB) $(LIBS)
+#	$(CC) -o $(OBJDIR)/monlist -DMAIN=1 monitor.c $(CRISP_LIB) $(LIBS)
 	rm -f $(OBJDIR)/procmon ; ln -s proc $(OBJDIR)/procmon
 #	setuid root chown root $(OBJDIR)/proc
 #	setuid root chmod 4755 $(OBJDIR)/proc
@@ -165,17 +165,16 @@ newf:
 		gzip -9 > $(HOME)/tmp/src.proc-`date +%Y%m%d`.tar.gz
 
 release:
-	mkrelease.pl bin/proc bin/procmon bin/monlist scripts
+	mkrelease.pl bin/proc bin/procmon scripts
 
 release2:
 #	strip bin/proc bin/monlist
 	elfrewrite bin/proc 
-	elfrewrite bin/monlist
+#	elfrewrite bin/monlist
 	build=b`grep build_no include/build.h | sed -e 's/^.* \([0-9][0-9]*\).*$$/\1/'` ; \
 	cd .. ; mv proc proc-$$build ; \
 	tar cvf - proc-$$build/bin/proc \
 		proc-$$build/bin/procmon \
-		proc-$$build/bin/monlist \
 		proc-$$build/README* \
 		proc-$$build/Changes proc-$$build/proc.pl | gzip -9 > /tmp/proc-$$build.tar.gz ; \
 	mv proc-$$build proc ; \

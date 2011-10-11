@@ -195,4 +195,5 @@ void	display_udp(void);
 void	display_icmp(void);
 void	display_ip(void);
 void	display_interrupts(void);
+char * read_file(char *path, char *name);
 

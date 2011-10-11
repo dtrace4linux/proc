@@ -1,3 +1,13 @@
+Tue Oct 11 21:37:49 2011  fox
+
+      53* monitor.c: Really fix the last-proc pctcpu calc so it works properly.
+          More sillyness in thread vs proc sort/searching.
+
+Mon Oct 10 23:22:20 2011  fox
+
+      52* monitor.c: Fix stupid last-proc vs last-task sort/search which
+          caused stupid %CPU for processes.
+
 Sun Oct  9 10:25:14 2011  fox
 
       51* monitor.c: Better atomic updating.

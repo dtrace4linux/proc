@@ -31,6 +31,8 @@ display_vmstat()
 	for (i = vmstat_idx; ; i++) {
 		char *name = mon_name(i);
 		unsigned long long v, v0;
+		int	flags = 0;
+
 		if (name == NULL || strncmp(name, "vmstat.", 7) != 0)
 			break;
 
@@ -41,7 +43,8 @@ display_vmstat()
 		v0 = mon_get_item(i, -1);
 
 		set_attribute(GREEN, BLACK, 0);
-		print("%-*s ", width + 1 - 7, name + 7);
+		name += 7;
+		print("%-*s ", width + 1 - 7, name);
 		print_number(i - vmstat_idx, 16, 1, v, v0);
 		if (v != v0) {
 			print("  %s%lld", v > v0 ? "+" : "", v - v0);
@@ -51,7 +54,12 @@ display_vmstat()
 		graph_set(g, "draw_minmax", 1);
 //		graph_set(g, "delta", 1);
 		graph_set(g, "color", 0xc08020);
-		draw_graph(g, 0, mon_name(i), 
+
+		if (strncmp(name, "pg", 2) == 0 ||
+		    strncmp(name, "numa", 4) == 0 ||
+		    strncmp(name, "pageo", 5) == 0)
+			flags = 0x02;
+		draw_graph(g, flags, mon_name(i), 
 			400, 13 * (row++ + 5), 150, 11, 1., 0x1000000);
 		refresh();
 		graph_refresh(g);

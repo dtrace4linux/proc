@@ -33,10 +33,12 @@ display_graphs()
 	graph_refresh(g);
 
 	draw_graph(g, 1, "loadavg", 		0,  100, WIDTH, 50, 100., 0x00c080);
-	draw_graph(g, 1, "meminfo.Dirty", 		200, 100, WIDTH, 50, 1., 0x0080c0);
+	draw_graph(g, 1, "meminfo.Dirty", 	200, 100, WIDTH, 50, 1., 0x0080c0);
 	draw_graph(g, 1, "meminfo.Cached", 	400, 100, WIDTH, 50, 1., 0x40b090);
 	draw_graph(g, 1, "meminfo.MemFree", 	0,  170, WIDTH, 50, 1., 0xc04090);
 	draw_graph(g, 1, "stat.procs_running", 	200, 170, WIDTH, 50, 1., 0x409080);
+	draw_graph(g, 0x03, "stat.intr", 	400, 170, WIDTH, 50, 1., 0x503090);
+	draw_graph(g, 0x03, "vmstat.pgfault", 	0, 240, WIDTH, 50, 1., 0x508090);
 
 	graph_free(g);
 }

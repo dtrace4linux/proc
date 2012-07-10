@@ -46,21 +46,19 @@ init_display(int r, int c)
 	int	new_rows;
 	int	new_cols;
 
-	if (display_initialised) {
-		/***********************************************/
-		/*   Handle window changing size.	       */
-		/***********************************************/
-		if (ioctl(0, TIOCGWINSZ, (char *) &winsize) < 0)
-			return;
-		new_rows = r ? r : winsize.ws_row;
-		new_cols = c ? c : winsize.ws_col;
-		if (new_rows == rows && new_rows == cols)
-			return;
-		chk_free(dpy);
-		chk_free(attr);
-		rows = new_rows;
-		cols = new_cols;
-		}
+	/***********************************************/
+	/*   Handle window changing size.	       */
+	/***********************************************/
+	if (ioctl(0, TIOCGWINSZ, (char *) &winsize) < 0)
+		return;
+	new_rows = r ? r : winsize.ws_row;
+	new_cols = c ? c : winsize.ws_col;
+	if (new_rows == rows && new_rows == cols)
+		return;
+	chk_free(dpy);
+	chk_free(attr);
+	rows = new_rows;
+	cols = new_cols;
 # endif
 	display_initialised = TRUE;
 	if (rows < 5)

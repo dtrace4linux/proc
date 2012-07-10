@@ -1,3 +1,12 @@
+Tue Jul 10 20:20:31 2012  fox
+
+      55* proc.c: Fix for RSS being out by *4.
+
+Thu Jun 21 16:06:45 2012  fox
+
+      54* makefile: Build 32 + 64 bit binaries. Hard code/internalise
+          and remove dependency on ncurses.
+
 Tue Oct 11 21:37:49 2011  fox
 
       53* monitor.c: Really fix the last-proc pctcpu calc so it works properly.

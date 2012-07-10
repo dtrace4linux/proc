@@ -182,8 +182,8 @@ main(int argc, char **argv)
 	if (chdir("/proc") < 0) {
 		}
 
-	init_termcap(arg_rows, arg_cols);
 	init_display(arg_rows, arg_cols);
+	init_termcap(arg_rows, arg_cols);
 	init_screen();
 
 	/***********************************************/
@@ -789,7 +789,7 @@ print(" d=%d ", d); else
 				print("%5ld", t);
 				}
 			cp = pip->pi_psinfo.pr_rssize == pip->pi_psinfo.pr_last_rssize ? NULL : "+";
-			t = pip->pi_psinfo.pr_rssize;
+			t = pip->pi_psinfo.pr_rssize * (pagesize / 1024);
 			if (t > 999999) {
 				set_attribute(cp ? BLACK : MAGENTA , cp ? MAGENTA : BLACK, 0);
 				print("/");
@@ -1634,9 +1634,7 @@ sort_normal(procinfo_t *p1, procinfo_t *p2)
 	return sort_order * ((int) p1->pi_psinfo.pr_pid - (int) p2->pi_psinfo.pr_pid);
 }
 int
-sort_size(p1, p2)
-procinfo_t	*p1;
-procinfo_t	*p2;
+sort_size(procinfo_t *p1, procinfo_t *p2)
 {	int	t;
 
 	if ((t = p2->pi_psinfo.pr_size - p1->pi_psinfo.pr_size) != 0)
@@ -1644,9 +1642,7 @@ procinfo_t	*p2;
 	return sort_normal(p1, p2);
 }
 int
-sort_rss(p1, p2)
-procinfo_t	*p1;
-procinfo_t	*p2;
+sort_rss(procinfo_t *p1, procinfo_t *p2)
 {	int	t;
 
 	if ((t = p2->pi_psinfo.pr_rssize - p1->pi_psinfo.pr_rssize) != 0)
@@ -1654,9 +1650,7 @@ procinfo_t	*p2;
 	return sort_size(p1, p2);
 }
 int
-sort_user(p1, p2)
-procinfo_t	*p1;
-procinfo_t	*p2;
+sort_user(procinfo_t *p1, procinfo_t *p2)
 {	int	t;
 
 	if ((t = p2->pi_psinfo.pr_uid - p1->pi_psinfo.pr_uid) != 0)

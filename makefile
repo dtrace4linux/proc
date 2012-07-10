@@ -2,7 +2,8 @@
 CRISP=../../../crisp
 
 PLATFORM_FLAGS=-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-CC=gcc -fno-builtin -fno-inline-functions-called-once -fno-inline -g -O -W -I../common -I. -I$(CRISP)/include -I$(PLATFORM) -D$(CR_TYPE) $(PLATFORM_FLAGS)
+ARCH=
+CC=gcc $(ARCH) -fno-builtin -fno-inline-functions-called-once -fno-inline -g -O -W -I../common -I. -I$(CRISP)/include -I$(PLATFORM) -D$(CR_TYPE) $(PLATFORM_FLAGS)
 #CC=cc -I$(CRISP)/include -D$(CR_TYPE) -D_KMEMUSER
 SIGNAL_H = /usr/include/sys/signal.h
 CRISP_LIB=$(CRISP)/bin/foxlib.a 
@@ -32,10 +33,17 @@ OBJ=	\
 	$(OBJDIR)/chkalloc.o
 
 linux: the-world
-	cd linux ; $(MAKE) OBJDIR=../bin.linux \
+	cd linux ; $(MAKE) OBJDIR=../bin.linux-x86_64 \
 		KSTAT= \
 		PLATFORM=linux CR_TYPE=CR_LINUX_GLIBC_X86_32 \
-		LIBS="-lncurses -ldl"  -f ../makefile all
+		LIBS="-ldl"  -f ../makefile all
+32:
+	cd linux ; $(MAKE) OBJDIR=../bin.linux-x86_32 \
+		ARCH=-m32 \
+		CRISP_LIB=/home/fox/crisp/bin.linux-x86_32/foxlib.a \
+		KSTAT= \
+		PLATFORM=linux CR_TYPE=CR_LINUX_GLIBC_X86_32 \
+		LIBS="-ldl"  -f ../makefile all
 
 the-world:
 
@@ -165,7 +173,10 @@ newf:
 		gzip -9 > $(HOME)/tmp/src.proc-`date +%Y%m%d`.tar.gz
 
 release:
-	mkrelease.pl bin/proc bin/procmon scripts
+	mkrelease.pl \
+		bin.linux-x86_32/proc bin.linux-x86_32/procmon \
+		bin.linux-x86_64/proc bin.linux-x86_64/procmon \
+		scripts
 
 release2:
 #	strip bin/proc bin/monlist

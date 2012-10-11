@@ -511,7 +511,7 @@ mon_dir()
 {	static char buf[128];
 
 	snprintf(buf, sizeof buf, "%s/proc",
-			getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+			getenv("TMPDIR") ? getenv("TMPDIR") : "/var/tmp");
 	return buf;
 }
 

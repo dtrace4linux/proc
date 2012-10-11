@@ -1874,6 +1874,9 @@ usage()
 	printf("    -rows NN   Set screen size to NN rows, rather than autodetect.\n");
 	printf("    -W         Dont save state in $HOME/.proc\n");
 	printf("    N          Limit ourselves to N procs\n");
+	printf("\n");
+	printf("TMPDIR (default /var/tmp)\n");
+	printf("    Directory where the proc monitoring files are kept.\n");
 	exit(1);
 }
 

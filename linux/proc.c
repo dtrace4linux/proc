@@ -1886,7 +1886,7 @@ usage()
 char *
 username(int uid)
 {	static char	buf[32];
-# define	MAX_PCACHE	24
+# define	MAX_PCACHE	64
 static struct pcache {
 	int	uid;
 	int	hits;
@@ -1895,11 +1895,14 @@ static struct pcache {
 	struct pcache tmp;
 	struct passwd *pwd;
 	int	i;
+	int	e = 0;
 
 	if (uid == 0)
 		return "root";
 
 	for (i = 0; i < MAX_PCACHE; i++) {
+		if (cache_tbl[i].hits == 0)
+			e = i;
 		if (cache_tbl[i].uid == uid) {
 			cache_tbl[i].hits++;
 			if (i && cache_tbl[i].hits > cache_tbl[i-1].hits) {
@@ -1912,16 +1915,23 @@ static struct pcache {
 			}
 		}
 
+	chk_free_ptr((void *) &cache_tbl[e].name);
+
+	cache_tbl[e].uid = uid;
+	cache_tbl[e].hits = 1;
 	if ((pwd = getpwuid(uid)) != (struct passwd *) NULL) {
-		if (cache_tbl[MAX_PCACHE-1].name)
-			chk_free(cache_tbl[MAX_PCACHE-1].name);
-		cache_tbl[MAX_PCACHE-1].uid = uid;
-		cache_tbl[MAX_PCACHE-1].hits = 1;
-		cache_tbl[MAX_PCACHE-1].name = chk_strdup(pwd->pw_name);
-		return cache_tbl[MAX_PCACHE-1].name;
+		cache_tbl[e].name = chk_strdup(pwd->pw_name);
 		}
-	sprintf(buf, "#%d", uid);
-	return buf;
+	else {
+		snprintf(buf, sizeof buf, "#%d", uid);
+		cache_tbl[e].name = chk_strdup(buf);
+		}
+/*{FILE *fp;
+fp = fopen("/tmp/proc.log", "a");
+fprintf(fp, "adding cache=%d uid=%d buf='%s'\n", e, uid, cache_tbl[e].name);
+fclose(fp);
+}*/
+	return cache_tbl[e].name;
 }
 
 void

@@ -11,7 +11,7 @@
 /*                All Rights Reserved.                                */
 /*                                                                    */
 /*--------------------------------------------------------------------*/
-/*  Description:  Code to implement shared memory access to /proc entries.
+/*  Description:  Code to implement shared memory access to /proc entries. */
 /*--------------------------------------------------------------------*/
 /*  $Header: Last edited: 27-Aug-2011 1.2 $ 			      */
 /**********************************************************************/
@@ -31,6 +31,7 @@
 # include	<sys/mman.h>
 # include	<dirent.h>
 # include	<assert.h>
+# include	<ctype.h>
 
 # define	VERSION		10
 # define	MAX_SYMS	3000
@@ -122,6 +123,7 @@ void mon_netstat(void);
 void mon_procs(void);
 void monitor_read(void);
 void monitor_init(void);
+void	reset_terminal(void);
 static void read_proc_status(char *name, int pid, procinfo_t *pip);
 
 #if defined(MAIN)
@@ -168,7 +170,6 @@ reset_terminal()
 void
 main_procmon()
 {	mdir_t	old_mdir;
-	time_t	t;
 	struct timeval tval;
 	struct stat sbuf;
 	struct stat sbuf1;
@@ -239,7 +240,6 @@ mon_sort(const void *p1, const void *p2)
 void
 monitor_init()
 {
-	char	buf[PATH_MAX];
 	int	i, fd;
 	int	pid;
 	int	size;
@@ -405,8 +405,7 @@ monitor_list(int entry)
 /**********************************************************************/
 void
 monitor_read()
-{	char	buf[BUFSIZ];
-	FILE	*fp;
+{
 
 	while (1) {
 		monitor_init();
@@ -454,6 +453,8 @@ monitor_start()
 			mon_rehash();
 			if (mon_exists("time"))
 				break;
+			printf("waiting for mon data...\n");
+			fflush(stdout);
 			sleep(1);
 			}
 		if (cnt >= 1000) {
@@ -537,7 +538,6 @@ static void
 mon_item(char *fname, char *lname, int type)
 {	FILE	*fp;
 	char	buf[4096];
-	char	var[BUFSIZ];
 	char	vname[BUFSIZ];
 	char	*cp, *vp, *vp1;
 	int	i, n;
@@ -571,7 +571,6 @@ mon_item(char *fname, char *lname, int type)
 	if (type & TY_NETSTAT) {
 		char	tbuf[4096];
 		char	*titles[256];
-		char	*cp1;
 		while (fgets(tbuf, sizeof tbuf, fp)) {
 			for (n = 0, cp = strtok(tbuf, ": \n"); cp; cp = strtok(NULL, ": \n")) {
 				titles[n++] = cp;
@@ -782,7 +781,7 @@ mon_unlock()
 /**********************************************************************/
 void
 mon_move(int arg)
-{	mdir_entry_t *ep = entry(1);
+{
 	int	orig_mon = mon_pos;
 
 	if (arg == 0) {
@@ -837,8 +836,7 @@ void
 mon_netstat(void)
 {
 #if !defined(MAIN)
-	procinfo_t	*pinfo;
-	int	i, num;
+	int	i;
 	socket_t *old_fd_list;
 	int	old_used;
 	FILE	*fp;
@@ -1004,6 +1002,8 @@ mon_read_netstat(int rel, socket_t **tblp)
 	int	fd;
 	socket_t *tbl;
 
+	rel = rel;
+
 	m = mon_pos < 0 ? mon_snap : mon_pos;
 	snprintf(buf, sizeof buf, "%s/netstat.%04d", mon_dir(), m);
 	if (stat(buf, &sbuf) < 0)
@@ -1033,8 +1033,10 @@ int	proc_count;
 int	proc_size;
 
 static int
-last_sort_pid(procinfo_t *p1, procinfo_t *p2)
-{	int	t1, t2;
+last_sort_pid(const void *v1, const void *v2)
+{	const procinfo_t *p1 = v1;
+	const procinfo_t *p2 = v2;
+	int	t1, t2;
 
 	if (p1->pi_psinfo.pr_pid != p2->pi_psinfo.pr_pid)
 		return p1->pi_psinfo.pr_pid - p2->pi_psinfo.pr_pid;
@@ -1042,10 +1044,10 @@ last_sort_pid(procinfo_t *p1, procinfo_t *p2)
 	t2 = p1->pi_flags & PI_IS_THREAD;
 	return t1 - t2;
 }
-static void *
-last_sort_search(void *v, void *elem)
-{	procinfo_t	*pv = (procinfo_t *) v;
-	procinfo_t	*p = elem;
+static int
+last_sort_search(const void *v, const void *elem)
+{	const procinfo_t	*pv = (procinfo_t *) v;
+	const procinfo_t	*p = elem;
 
 	if (pv->pi_psinfo.pr_pid != p->pi_psinfo.pr_pid)
 		return pv->pi_psinfo.pr_pid - p->pi_psinfo.pr_pid;
@@ -1083,7 +1085,7 @@ mon_read_procs()
 	m = mon_pos < 0 ? (int) mon_snap : mon_pos;
 	snprintf(buf, sizeof buf, "%s/proc.%04d", mon_dir(), m);
 	if ((fp = fopen(buf, "r")) == NULL) {
-		return;
+		return 0;
 		}
 	for (i = nproc = 0; fgets(buf, sizeof buf, fp); i++) {
 		char	*cp = buf;
@@ -1274,7 +1276,6 @@ proc_get_procdir(char *name, int is_proc, int *countp)
 	int	count = *countp;
 	prpsinfo_t *pip;
 	procinfo_t *lp;
-	int	i;
 	struct stat sbuf;
 	char	buf[BUFSIZ];
 	int	num = 0;
@@ -1404,7 +1405,6 @@ read_proc_status(char *name, int pid, procinfo_t *pp)
 {	char	*mem, *cp;
 	char	buf[1024];
 	char	cmd[1024], *bp;
-	int	i;
 	int	t;
 	prpsinfo_t *pip = &pp->pi_psinfo;
 
@@ -1538,10 +1538,8 @@ printf("  -> %p %p %lu\n", pp, pip, (unsigned long) pip->pr_pctcpu);
 procinfo_t *
 raw_proc_get_proclist(int *nump)
 {
-	char	*cp;
 	procinfo_t	*p;
 	int	i;
-	char	buf[BUFSIZ];
 
 	proc_running = proc_zombie = proc_stopped = 0;
 

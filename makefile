@@ -90,7 +90,7 @@ $(OBJDIR)/coldisp.o:	../common/coldisp.c $(H)
 	$(CC) -c ../common/coldisp.c
 	mv coldisp.o $(OBJDIR)
 
-$(OBJDIR)/commands.o:	../common/commands.c $(H)
+$(OBJDIR)/commands.o:	../common/commands.c $(H) ../include/build.h
 	$(CC) -c ../common/commands.c
 	mv commands.o $(OBJDIR)
 
@@ -192,4 +192,6 @@ release2:
 	scp /tmp/proc-$$build.tar.gz minny:release/website/tools ; \
 	ssh minny rm -f release/website/tools/proc-current.tar.gz ; \
 	ssh minny ln -s proc-$$build.tar.gz release/website/tools/proc-current.tar.gz
-
+install:
+	rm -f $(HOME)/bin/proc
+	cp bin.linux-x86_64/proc $(HOME)/bin

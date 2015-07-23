@@ -340,6 +340,7 @@ help_func(int argc, char **argv)
 		}
 	print("\n");
 	print("Ctrl-B - page/back; Ctrl-F - page/fwd; Ctrl-R - reset paging\n");
+	print("Ctrl-P - 1 min back; Ctrl-N - 1 min fwd\n");
 	print("Ctrl-L - refresh screen.\n");
 	print("\nPress any key to continue: ");
 	refresh();

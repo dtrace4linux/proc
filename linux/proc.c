@@ -1111,15 +1111,23 @@ main_loop(void)
 			}
 
 		/***********************************************/
-		/*   Avoid refreshing if nothing changed.      */
+		/*   Avoid  refreshing if nothing changed but  */
+		/*   avoid  infinite  loop  where  user loses  */
+		/*   control.				       */
 		/***********************************************/
 		mon_lock();
 		lt0 = lt;
 		lt = mon_get_time();
 		if (lt0 == lt) {
 			struct timeval tval = {0, 50 * 1000};
+			fd_set rbits;
+			int	ret;
+
+			FD_ZERO(&rbits);
+			FD_SET(1, &rbits);
+
 			mon_unlock();
-			select(0, NULL, NULL, NULL, &tval);
+			ret = select(32, &rbits, NULL, NULL, &tval);
 			if (lt == (unsigned long long) -1) {
 				set_attribute(RED, YELLOW, 0);
 				mvprint(5, 0, "Status pmap is missing - will refresh when procmon restarts.");
@@ -1136,6 +1144,8 @@ main_loop(void)
 				refresh();
 				stale_displayed = FALSE;
 				}
+			else if (ret)
+				wait_for_command();
 			continue;
 			}
 
@@ -1980,6 +1990,12 @@ static int first_time = TRUE;
 		  	return;
 		  case 'f' & 0x1f:
 		  	mon_move(1);
+		  	return;
+		  case 'p' & 0x1f:
+		  	mon_move(-60);
+		  	return;
+		  case 'n' & 0x1f:
+		  	mon_move(60);
 		  	return;
 		  case 'r' & 0x1f:
 		  	mon_move(0);

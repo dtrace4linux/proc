@@ -35,10 +35,13 @@ display_graphs()
 	draw_graph(g, 1, "loadavg", 		0,  100, WIDTH, 50, 100., 0x00c080);
 	draw_graph(g, 1, "meminfo.Dirty", 	200, 100, WIDTH, 50, 1., 0x0080c0);
 	draw_graph(g, 1, "meminfo.Cached", 	400, 100, WIDTH, 50, 1., 0x40b090);
+
 	draw_graph(g, 1, "meminfo.MemFree", 	0,  170, WIDTH, 50, 1., 0xc04090);
 	draw_graph(g, 1, "stat.procs_running", 	200, 170, WIDTH, 50, 1., 0x409080);
 	draw_graph(g, 0x03, "stat.intr", 	400, 170, WIDTH, 50, 1., 0x503090);
+
 	draw_graph(g, 0x03, "vmstat.pgfault", 	0, 240, WIDTH, 50, 1., 0x508090);
+	draw_graph(g, 0x03, "loadavg.06", 	200, 240, WIDTH, 50, 1., 0x508090);
 
 	graph_free(g);
 }
@@ -65,13 +68,17 @@ draw_graph(graph_t *g, int flags, char *item, int x, int y,
 {	int	i;
 	char	buf[BUFSIZ];
 	unsigned long long v0 = 0;
+	char	*title = item;
+
+	if (strcmp(item, "loadavg.06") == 0)
+		title = "pids";
 
 	graph_clear(g);
 	graph_setfont(g, "6x9");
 	graph_setforeground(g, 0xffffff);
 	graph_setbackground(g, 0xffffff);
 	if (flags & 0x01)
-		graph_drawstring(g, x, y - 3, item);
+		graph_drawstring(g, x, y - 3, title);
 
 	graph_set(g, "x", x);
 	graph_set(g, "y", y);

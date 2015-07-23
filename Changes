@@ -1,3 +1,15 @@
+Thu Jul 23 22:50:15 2015  fox
+
+      58* .gitignore
+          common/commands.c
+          linux/graphs.c
+          linux/proc.c
+          linux/sigdesc.h
+          makefile
+          scripts/stackmon.pl
+          Add pids to graph. Attempt to fix infinite loop where we dont
+	  read kbd on ^B; add support for ^N/^P
+
 Sat Aug 30 19:35:23 2014  fox
 
       57* .mk

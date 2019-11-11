@@ -7,7 +7,7 @@
 /*  Author:        P. D. Fox                                          */
 /*  Created:       29 Jul 2011                                        */
 /*                                                                    */
-/*  Copyright (c) 2011, Foxtrot Systems Ltd                           */
+/*  Copyright (c) 2011-2020, Foxtrot Systems Ltd                      */
 /*                All Rights Reserved.                                */
 /*                                                                    */
 /*--------------------------------------------------------------------*/
@@ -32,9 +32,10 @@
 # include	<dirent.h>
 # include	<assert.h>
 # include	<ctype.h>
+# include	<pwd.h>
 
 # define	VERSION		10
-# define	MAX_SYMS	3000
+# define	MAX_SYMS	10000
 # define	MAX_TICKS	1024
 
 int	proc_zombie;
@@ -113,6 +114,7 @@ extern struct timeval last_tv;
 /**********************************************************************/
 /*   Prototypes.						      */
 /**********************************************************************/
+char *time_str(void);
 static void usage(void);
 static void mon_item(char *fname, char *name, int type);
 static void mon_set(char *vname, tick_t v);
@@ -120,6 +122,7 @@ void monitor_list(int);
 char	*basename(char *);
 static void mon_rehash(void);
 void mon_netstat(void);
+int	mon_exists(char *);
 void mon_procs(void);
 void monitor_read(void);
 void monitor_init(void);
@@ -453,7 +456,7 @@ monitor_start()
 			mon_rehash();
 			if (mon_exists("time"))
 				break;
-			printf("waiting for mon data...\n");
+			printf("%s waiting for mon data...\n", time_str());
 			fflush(stdout);
 			sleep(1);
 			}
@@ -509,10 +512,17 @@ monitor_uninit()
 
 char *
 mon_dir()
-{	static char buf[128];
+{	static char buf[256];
+	struct passwd *pwd;
 
-	snprintf(buf, sizeof buf, "%s/proc",
-			getenv("TMPDIR") ? getenv("TMPDIR") : "/var/tmp");
+	if (buf[0])
+		return buf;
+
+	pwd = getpwuid(getuid());
+
+	snprintf(buf, sizeof buf, "%s/proc.%s",
+			getenv("TMPDIR") ? getenv("TMPDIR") : "/var/tmp",
+			pwd ? pwd->pw_name : "anon");
 	return buf;
 }
 

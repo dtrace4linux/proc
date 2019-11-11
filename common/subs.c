@@ -9,8 +9,7 @@ extern char *sys_errlist[];
 /*   digits so its easier to read large numbers.		      */
 /**********************************************************************/
 char *
-comma(n)
-unsigned long	n;
+comma(unsigned long n)
 {
 	static char bufs[80];
 	static int index = 0;
@@ -42,8 +41,7 @@ unsigned long	n;
 /*   Display error message on command line.			      */
 /**********************************************************************/
 void
-error(str)
-char	*str;
+error(char *str)
 {
 	mvprint(6, 0, "");
 	print("%s\n", str);
@@ -53,9 +51,7 @@ char	*str;
 /*   Map a string into a number.				      */
 /**********************************************************************/
 int
-map_to_int(tbl, str)
-struct map *tbl;
-char	*str;
+map_to_int(struct map *tbl, char *str)
 {	static char buf[12];
 
 	struct map *mp;
@@ -69,8 +65,7 @@ char	*str;
 /*   Display the error from a previous system call on command line.   */
 /**********************************************************************/
 void
-sys_error(str)
-char	*str;
+sys_error(char *str)
 {	int	err = errno;
 
 	mvprint(6, 0, "");

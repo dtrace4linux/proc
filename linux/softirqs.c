@@ -37,6 +37,11 @@ display_softirqs()
 
 	if (softirqs_idx < 0)
 		softirqs_idx = mon_find("softirqs", &width);
+	if (softirqs_idx < 0) {
+		print("cannot find softirqs in mmap file.\n");
+		clear_to_end_of_screen();
+		return;
+		}
 
 	print("%*s  ", width - 9, "");
 	for (i = 0; i < num_cpus; i++) {

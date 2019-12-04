@@ -26,6 +26,7 @@ sub main
 {
         Getopt::Long::Configure('no_ignore_case');
         usage() unless GetOptions(\%opts,
+		'exit',
                 'help',
                 'rate=s',
                 'size',
@@ -94,19 +95,25 @@ sub main
                                 }
                         }
 
-                        $pids{$p} = $cmdline;
-                        next if $first;
+                        $pids{$p}{cmd} = $cmdline;
+			if ($first) {
+				$pids{$p}{time} = time();
+				$pids{$p}{user} = $uid;
+				next;
+			}
 
                         my $user;
                         if (!defined($old_pids{$p})) {
-                                $user = getpwuid($uid) if $uid;
+				$pids{$p}{time} = time();
+                                $user = getpwuid($uid) if defined($uid);
                                 $user ||= "(nouid)";
-                                printf time_string() . "New pid    : %8s %5d %5s %s\n", 
+                                printf time_string() . "New : %8s %5d %5s %s\n", 
                                         $user, $p, $ppid, $cmdline;
+				$pids{$p}{user} = $user;
                         } elsif ($old_pids{$p} ne $cmdline) {
-                                $user = getpwuid($uid) if $uid;
+                                $user = getpwuid($uid) if defined($uid);
                                 $user ||= "(nouid)";
-                                printf time_string() . "New pid cmd: %8s %5d %5s %s\n", 
+                                printf time_string() . "New*: %8s %5d %5s %s\n", 
                                         $user, $p, $ppid, $cmdline;
                         }
 
@@ -138,6 +145,26 @@ sub main
                                         print "  $pid: VSS: $vss RSS: $rss\n";
                                 }
                         }
+
+			###############################################
+			#   Find terminated procs.		      #
+			###############################################
+			if ($opts{exit}) {
+				foreach my $p (keys(%old_pids)) {
+					next if defined($pids{$p});
+					my $t = time() - $old_pids{$p}{time};
+					if ($t > 3600) {
+						$t = sprintf("%dm%ds", $t / 60, $t % 60);
+					} else {
+						$t = $t . "s";
+					}
+					printf time_string() . "Term: %8s %s %s %s\n",
+						$old_pids{$p}{user},
+						$p,
+						"[$t]",
+						$old_pids{$p}{cmd};
+				}
+			}
                 }
                 $first = 0;
         }
@@ -156,6 +183,7 @@ sub usage
 pidmon.pl -- monitor for new processes being created
 Usage: pidmon.pl
 
+
 Description:
         
         This script keeps polling the /proc filesystem to look for new processes
@@ -170,7 +198,10 @@ Description:
 
 Switches:
 
+  -exit        Show process termination
   -rate NN     Number of milliseconds between polling.
+  -size        Show process size.
+
 EOF
         exit(1);
 }

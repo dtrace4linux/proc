@@ -20,6 +20,7 @@
 # include	"screen.h"
 # include	"coldisp.h"
 # include	"sigdesc.h"
+# include	<ctype.h>
 # include	"../include/build.h"
 
 FILE	*log_fp;
@@ -112,6 +113,7 @@ extern int proc_id;
 int	delay_time = 5;
 
 char	*chk_strdup(char *);
+void	refresh(void);
 
 static void
 command_switches(int argc, char **argv)

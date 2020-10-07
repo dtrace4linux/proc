@@ -28,6 +28,7 @@ OBJ=	\
 	$(OBJDIR)/screen.o \
 	$(OBJDIR)/streams.o \
 	$(OBJDIR)/softirqs.o \
+	$(OBJDIR)/temperature.o \
 	$(OBJDIR)/subs.o \
 	$(OBJDIR)/vmstat.o \
 	$(OBJDIR)/chkalloc.o
@@ -161,6 +162,10 @@ $(OBJDIR)/softirqs.o:	../linux/softirqs.c $(H)
 $(OBJDIR)/subs.o:	../common/subs.c $(H)
 	$(CC) -c ../common/subs.c
 	mv subs.o $(OBJDIR)
+
+$(OBJDIR)/temperature.o:	../linux/temperature.c $(H)
+	$(CC) -c ../linux/temperature.c
+	mv temperature.o $(OBJDIR)
 
 $(OBJDIR)/vmstat.o:	../linux/vmstat.c $(H)
 	$(CC) -c ../linux/vmstat.c

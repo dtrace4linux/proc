@@ -1,5 +1,6 @@
 /*# include	"machine.h"*/
 # include	<stdio.h>
+# include	<ctype.h>
 # include	<limits.h>
 # include	<string.h>
 # include	<unistd.h>
@@ -71,6 +72,7 @@ enum {
 	DISPLAY_PROC,
 	DISPLAY_PS,
 	DISPLAY_SOFTIRQS,
+	DISPLAY_TEMPERATURE,
 	DISPLAY_TCP,
 	DISPLAY_UDP,
 	DISPLAY_VMSTAT,
@@ -196,4 +198,6 @@ void	display_icmp(void);
 void	display_ip(void);
 void	display_interrupts(void);
 char * read_file(char *path, char *name);
+void error(char *str);
+void	chk_free(void *);
 

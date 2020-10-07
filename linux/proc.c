@@ -1208,6 +1208,9 @@ main_loop(void)
 		  case DISPLAY_TCP:
 		  	display_TCP();
 			break;
+		  case DISPLAY_TEMPERATURE:
+		  	display_temperature();
+			break;
 		  case DISPLAY_UDP:
 		  	display_UDP();
 			break;

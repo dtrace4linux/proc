@@ -46,6 +46,7 @@
 
 void	init_display(int, int);
 void	clear_screen PROTO((void));
+void	clear_to_end_of_screen(void);
 void	clear_to_eol PROTO((void));
 void	home_screen PROTO((void));
 void	goto_rc PROTO((int, int));
@@ -55,6 +56,7 @@ void	display_attribute PROTO((void));
 void	print_char PROTO((int));
 void	print_string PROTO((char *));
 void	mvprint(int, int, char *, ...);
+void	refresh(void);
 void	snap_to_file(FILE *);
 
 extern int dsp_crmode;

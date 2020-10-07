@@ -7,13 +7,13 @@
 /*  Author:        P. D. Fox                                          */
 /*  Created:       25 Jan 2005                                        */
 /*                                                                    */
-/*  Copyright (c) 1995-2011, Foxtrot Systems Ltd                      */
+/*  Copyright (c) 1995-2020, Foxtrot Systems Ltd                      */
 /*                All Rights Reserved.                                */
 /*                                                                    */
 /*--------------------------------------------------------------------*/
 /*  Description:  Generic command handler for 'proc'                  */
 /*--------------------------------------------------------------------*/
-/*  $Header: Last edited: 06-Sep-2011 1.7 $ 			      */
+/*  $Header: Last edited: 07-Oct-2020 1.8 $ 			      */
 /**********************************************************************/
 
 # include	"psys.h"
@@ -97,8 +97,9 @@ struct commands {
 	{"set",		set_func,	-1,     "Set options/limits."},
 	{"show",	show_func,	-1,     "Show a hidden column"},
 	{"snap",	snap_func,	-1,     "Dump snapshots to file to see history"},
-	{"softirqs",	NULL,		DISPLAY_SOFTIRQS,     "Show /proc/softirqs"},
-	{"tcp",		NULL,		DISPLAY_TCP,     "Show TCP stats"},
+	{"softirqs",	NULL,		DISPLAY_SOFTIRQS,	"Show /proc/softirqs"},
+	{"tcp",		NULL,		DISPLAY_TCP,     	"Show TCP stats"},
+	{"temp",	NULL,		DISPLAY_TEMPERATURE,    "Show CPU temperatures"},
 	{"thread",	thread_func,	-1,     "Toggle thread mode"},
 	{"udp",		NULL,		DISPLAY_UDP,     "Show UDP stats"},
 	{"units",	units_func,	-1,     "Show units on numbers"},

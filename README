@@ -245,13 +245,4 @@ the proc clients.
 Files are stored in /tmp/proc (or $TMPDIR/proc is $TMPDIR is
 defined).
 
-Security Considerations
------------------------
-"proc" does not need to run as root, but some information may be
-missing if it does not run as root. E.g. socket owning information
-is one example.
-
-Running proc as root, on your own system is perfectly reasonable, but
-be careful of running as root on a public or limited access system.
-proc can be used to kill process, spawn process, and writes to files
-in the /tmp/proc directory.
+<img src="images/vm.png" />

@@ -72,7 +72,8 @@ display_temperature()
 		graph_set(g, "color", 0xc08020);
 
 		int flags = 0;
-		draw_graph(g, flags, "namex",
+		snprintf(buf, sizeof buf, "temperature.cpu%d.t", i);
+		draw_graph(g, flags, buf,
 			400, 13 * (row++ + 5), 150, 11, 1., 0x1000000);
 		refresh();
 		graph_refresh(g);

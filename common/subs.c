@@ -1,4 +1,5 @@
 # include	"psys.h"
+# include	"coldisp.h"
 # include	"screen.h"
 
 /*extern int  sys_nerr;
@@ -19,7 +20,7 @@ comma(unsigned long n)
 	int	i;
 
 	index += 20;
-	if (index >= sizeof bufs)
+	if (index >= (int) sizeof bufs)
 		index = 0;
 	buf = &bufs[index];
 	sprintf(buf, "%lu", n);

@@ -46,4 +46,5 @@ void graph_setfont(graph_t *g, char *font);
 void graph_setbackground(graph_t *g, int color);
 void graph_setforeground(graph_t *g, int color);
 void graph_setname(graph_t *g, int x, int y, int width, int height, char *name);
+void graph_free(graph_t *g);
 

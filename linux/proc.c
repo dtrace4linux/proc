@@ -136,7 +136,7 @@ void	update_headers(void);
 void	usage(void);
 void	print_vnode(long);
 int	print_addr(long);
-void	main_procmon(void);
+void	main_procmon(int, char **);
 static void	get_cpu_info(void);
 
 int
@@ -146,7 +146,7 @@ main(int argc, char **argv)
 	struct stat sbuf;
 
 	if (strcmp(basename(argv[0]), "procmon") == 0) {
-		main_procmon();
+		main_procmon(argc, argv);
 		exit(1);
 		}
 
@@ -230,7 +230,7 @@ diff_time(struct timeval *tnow, struct timeval *tlast)
 }
 
 typedef struct file_info {
-	int	f_blks;
+	long	f_blks;
 	char	*f_name;
 	unsigned long long f_size;
 	} file_info_t;
@@ -268,7 +268,7 @@ static dstr_t old_dstr;
 		if (fip < (file_info_t *) DSTR_STREND(&old_dstr) &&
 		   (fd = open64(fip->f_name, O_RDONLY )) >= 0) {
 		   	struct stat sbuf;
-			fstat64(fd, &sbuf);
+			fstat(fd, &sbuf);
 
 			if (fdatasync(fd)) {
 				perror("fdatasync");
@@ -428,7 +428,7 @@ display_files_mincore(char *filename, struct stat *sbuf, int *err)
 	size_t page_index;
 
 	*err = 0;
-	if (lstat64(filename, sbuf) == 0 && S_ISLNK(sbuf->st_mode)) {
+	if (lstat(filename, sbuf) == 0 && S_ISLNK(sbuf->st_mode)) {
 		*err = -1;
 		return 0;
 		}
@@ -1425,6 +1425,14 @@ proc_get_proclist(int *nump)
 /**********************************************************************/
 char *
 read_file(char *path, char *name)
+{	char	*cp = read_file2(path, name);
+
+	if (cp)
+		return cp;
+	return chk_strdup("  <non-existant>");
+}
+char *
+read_file2(char *path, char *name)
 {
 static	char	*buf;
 static int	bsize = 1024;
@@ -1441,7 +1449,7 @@ static int	bsize = 1024;
 		strcpy(buf, path);
 
 	if ((fd = open(buf, O_RDONLY)) < 0)
-		return chk_strdup(" <non-existant>");
+		return NULL;
 
 	while (1) {
 		char *bp = buf + size;
@@ -1881,6 +1889,7 @@ usage()
 	printf("\n");
 	printf("    -batch     Dont use color or escape sequences\n");
 	printf("    -c N       Run at most N times\n");
+	printf("    -debugmon  Debug the procmon child.\n");
 	printf("    -fast_poll Fast screen refresh (used for debugging).\n");
 	printf("    -killmon   Kill any existing child monitoring process.\n");
 	printf("    -cols NN   Set screen size to NN columns, rather than autodetect.\n");

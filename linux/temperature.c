@@ -22,7 +22,7 @@
 
 # define	MAX_CPUS	256
 
-static int softirqs_idx = -1;
+static int temp_idx = -1;
 static int width;
 extern int num_cpus;
 
@@ -33,50 +33,52 @@ display_temperature()
 	char	buf[BUFSIZ];
 	char	*dn = "/sys/class/hwmon/hwmon0";
 	char	*cp, *cp2, *cp3, *cp4;
+	int	row = 0;
+	unsigned long long v, v1, v2;
+	graph_t	*g = graphs_new();
 
-	if (stat(dn, &sbuf) < 0) {
-		print("%s not available on this machine.\n", dn);
-		clear_to_end_of_screen();
-		return;
-		}
+	if (temp_idx < 0)
+		temp_idx = mon_find("temperature", &width);
 
-	for (i = 0; i < num_cpus; i++) {
-		float t;
-		float t1;
-		float t2;
-		float t3;
-
-		snprintf(buf, sizeof buf, "%s/temp%d_input", dn, i + 1);
-		if ((cp = read_file(buf, NULL)) == NULL)
+	for (i = 1; ; i++) {
+		snprintf(buf, sizeof buf, "temperature.cpu%d.t", i);
+		if (!mon_exists(buf)) {
 			break;
-		if (strncmp(cp, " <non", 5) == 0)
-			break;
+			}
+		v = mon_get(buf);
+		snprintf(buf, sizeof buf, "temperature.cpu%d.tmax", i);
+		v1 = mon_get(buf);
+		snprintf(buf, sizeof buf, "temperature.cpu%d.tcrit", i);
+		v2 = mon_get(buf);
 
-		snprintf(buf, sizeof buf, "%s/temp%d_label", dn, i + 1);
-		if ((cp2 = read_file(buf, NULL)) == NULL)
-			break;
-		cp2[strlen(cp2)-1] = '\0';
+		snprintf(buf, sizeof buf, "%s/temp%d_label", dn, i);
+		cp = read_file2(buf, NULL);
+		if (cp) {
+			cp[strlen(cp)-1] = '\0';
+			}
+		else
+			cp = chk_strdup("hello");
 
-		snprintf(buf, sizeof buf, "%s/temp%d_max", dn, i + 1);
-		if ((cp3 = read_file(buf, NULL)) == NULL)
-			break;
-		cp3[strlen(cp3)-1] = '\0';
-
-		snprintf(buf, sizeof buf, "%s/temp%d_crit", dn, i + 1);
-		if ((cp4 = read_file(buf, NULL)) == NULL)
-			break;
-		cp4[strlen(cp4)-1] = '\0';
-
-		t = atof(cp) / 1000.;
-		t1 = atof(cp3) / 1000.;
-		t2 = atof(cp4) / 1000.;
-		print("%-12s : %5.1f C  (high = %5.1f C, crit = %5.1f C)\n", cp2, i, t, t1, t2);
-
+		
+		print("%-12s : %5.1f C  (high = %5.1f C, crit = %5.1f C)\n", 
+			cp ? cp : "no-label",
+			v / 1000., 
+			v1 / 1000., 
+			v2 / 1000.);
 		chk_free(cp);
-		chk_free(cp2);
-		chk_free(cp3);
-		chk_free(cp4);
+
+		graph_set(g, "draw_minmax", 1);
+//		graph_set(g, "delta", 1);
+		graph_set(g, "color", 0xc08020);
+
+		int flags = 0;
+		draw_graph(g, flags, "namex",
+			400, 13 * (row++ + 5), 150, 11, 1., 0x1000000);
+		refresh();
+		graph_refresh(g);
+
 		}
 	print("\n");
 	clear_to_end_of_screen();
+	graph_free(g);
 }

@@ -41,6 +41,7 @@ set        Set options/limits.
 show       Show a hidden column
 snap       Dump snapshots to file to see history
 softirqs   Show /proc/softirqs
+temp       Show CPU temperatures
 tcp        Show TCP statistics
 thread     Toggle thread mode
 udp        Show UDP statistics

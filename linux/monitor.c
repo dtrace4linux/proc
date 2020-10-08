@@ -110,6 +110,7 @@ extern struct timeval last_tv;
 #define	TY_IGNORE_HEADER2       0x020
 #define	TY_NETSTAT		0x040
 #define	TY_INTERRUPTS		0x080
+#define	TY_TEMPERATURE		0x100
 
 /**********************************************************************/
 /*   Prototypes.						      */
@@ -141,6 +142,13 @@ int main(int argc, char **argv)
 	return 0;
 }
 void
+reset_terminal()
+{
+	exit(1);
+}
+
+#endif
+void
 do_switches(int argc, char **argv)
 {
 	int	i;
@@ -148,6 +156,12 @@ do_switches(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		cp = argv[i];
+		if (*cp == '-')
+			cp++;
+		if (strcmp(cp, "list") == 0) {
+			monitor_list(-1);
+			exit(0);
+			}
 		if (strcmp(cp, "noexit") == 0) {
 			noexit = TRUE;
 			continue;
@@ -160,22 +174,21 @@ usage()
 {
 	fprintf(stderr, "procmon -- background data collector for 'proc'\n");
 	fprintf(stderr, "\n");
+	fprintf(stderr, "Switches:\n"
+"\n"
+"  -list            Dump the procmon shm file\n"
+		);
 	exit(1);
 }
 
 void
-reset_terminal()
-{
-	exit(1);
-}
-#endif
-
-void
-main_procmon()
+main_procmon(int argc, char **argv)
 {	mdir_t	old_mdir;
 	struct timeval tval;
 	struct stat sbuf;
 	struct stat sbuf1;
+
+	do_switches(argc, argv);
 
 	monitor_init();
 
@@ -391,7 +404,7 @@ monitor_list(int entry)
 			mdir->md_first * sizeof(tick_t));
 		if (entry >= 0 && i != entry)
 			continue;
-		printf("%4d: %06lx %8llu %s\n", 
+		printf("%4d: %06lx %10llu %s\n", 
 			i, ep->me_offset, *tp, ep->me_name);
 		if (entry < 0)
 			continue;
@@ -422,6 +435,7 @@ monitor_read()
 		mon_item("/proc/net/netstat","proto",	TY_NETSTAT);
 		mon_item("/proc/net/snmp",   "proto",	TY_NETSTAT);
 		mon_item("/proc/interrupts",   "irq",	TY_INTERRUPTS);
+		mon_item("/sys/class/hwmon/hwmon0",   "temp",	TY_TEMPERATURE);
 		mon_netstat();
 		mon_procs();
 
@@ -541,6 +555,111 @@ mon_is_stale()
 
 	return t;
 }
+static hash_element_t **harray;
+int
+mon_find(char *prefix, int *width)
+{
+	int	i, j, len;
+
+	/**width = 0;*/
+
+	if (harray == NULL)
+		harray = hash_linear(hash_syms, HASH_SORTED);
+
+	len = strlen(prefix);
+	for (i = 0; i < hash_size(hash_syms); i++) {
+		int	n = (int) (long) hash_data(harray[i]);
+		mdir_entry_t *ep = entry(n);
+		if (strncmp(ep->me_name, prefix, len) == 0 &&
+		   ep->me_name[len] == '.') {
+		   	for (j = i; j < hash_size(hash_syms); j++) {
+				int n = (int) (long) hash_data(harray[j]);
+				mdir_entry_t *ep = entry(n);
+				int	w = strlen(ep->me_name);
+				if (strncmp(ep->me_name, prefix, len) != 0)
+					break;
+				if (w > *width)
+					*width = w;
+				}
+		   	return n;
+			}
+		}
+	return -1;
+}
+
+unsigned long long
+mon_get(char *name)
+{	int	n;
+	mdir_entry_t *ep;
+	tick_t	*tp;
+
+	if ((n = (int) (long) hash_lookup(hash_syms, name)) == 0)
+		return -1;
+	ep = entry(n);
+	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
+	return tp[mon_pos < 0 ? mon_snap : mon_pos];
+}
+
+unsigned long long
+mon_get_rel(char *name, int rel)
+{	mdir_entry_t *ep;
+	tick_t	*tp;
+	int	n;
+
+	if ((n = (int) (long) hash_lookup(hash_syms, name)) == 0)
+		return -1;
+	ep = entry(n);
+	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
+	n = mon_pos < 0 ? mon_snap : mon_pos;
+	n += rel;
+	if (n < 0)
+		n += max_ticks;
+	return tp[n];
+}
+
+unsigned long long
+mon_get_item(int n, int rel)
+{	mdir_entry_t *ep;
+	tick_t	*tp;
+
+	ep = entry(n);
+	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
+	n = mon_pos < 0 ? mon_snap : mon_pos;
+	n += rel;
+	if (n < 0)
+		n += max_ticks;
+	return tp[n];
+}
+/**********************************************************************/
+/*   Get the current time, in 1/100th secs.			      */
+/**********************************************************************/
+unsigned long long
+mon_get_time()
+{	struct stat sbuf;
+
+	if (stat(mon_fname, &sbuf) < 0 || sbuf.st_ino != inode) {
+		return (unsigned long long) -1;
+		}
+	/***********************************************/
+	/*   Check in case the monitor changed pid.    */
+	/***********************************************/
+	
+	/***********************************************/
+	/*   Let mon proc know someone is watching.    */
+	/***********************************************/
+	mdir->md_readers = time(NULL);
+	return mon_get("time");
+}
+
+/**********************************************************************/
+/*   Let caller know if we are playing back.			      */
+/**********************************************************************/
+int
+mon_history()
+{
+	return old_pos >= 0;
+}
+
 /**********************************************************************/
 /*   Read a /proc entry and parse it away into the mmap.	      */
 /**********************************************************************/
@@ -552,6 +671,42 @@ mon_item(char *fname, char *lname, int type)
 	char	*cp, *vp, *vp1;
 	int	i, n;
 	unsigned long long v;
+
+	if (type & TY_TEMPERATURE) {
+		char	*cp2, *cp3, *cp4;
+		float	t, t1, t2;
+		char	*dn = "/sys/class/hwmon/hwmon0";
+
+		for (i = 1; i < 128; i++) {
+			snprintf(buf, sizeof buf, "%s/temp%d_input", dn, i);
+			if ((cp = read_file2(buf, NULL)) == NULL)
+				break;
+			if (cp == NULL)
+				break;
+
+			snprintf(buf, sizeof buf, "%s/temp%d_max", dn, i);
+			if ((cp3 = read_file(buf, NULL)) == NULL)
+				break;
+			cp3[strlen(cp3)-1] = '\0';
+
+			snprintf(buf, sizeof buf, "%s/temp%d_crit", dn, i);
+			if ((cp4 = read_file(buf, NULL)) == NULL)
+				break;
+			cp4[strlen(cp4)-1] = '\0';
+
+			snprintf(vname, sizeof vname, "temperature.cpu%d.t", i);
+			mon_set(vname, atoi(cp));
+			snprintf(vname, sizeof vname, "temperature.cpu%d.tmax", i);
+			mon_set(vname, atoi(cp3));
+			snprintf(vname, sizeof vname, "temperature.cpu%d.tcrit", i);
+			mon_set(vname, atoi(cp4));
+
+			chk_free(cp);
+			chk_free(cp3);
+			chk_free(cp4);
+			}
+		return;
+		}
 
 	if ((fp = fopen(fname, "r")) == NULL)
 		return;
@@ -665,110 +820,7 @@ mon_item(char *fname, char *lname, int type)
 		}
 	fclose(fp);
 }
-static hash_element_t **harray;
-int
-mon_find(char *prefix, int *width)
-{
-	int	i, j, len;
 
-	/**width = 0;*/
-
-	if (harray == NULL)
-		harray = hash_linear(hash_syms, HASH_SORTED);
-
-	len = strlen(prefix);
-	for (i = 0; i < hash_size(hash_syms); i++) {
-		int	n = (int) (long) hash_data(harray[i]);
-		mdir_entry_t *ep = entry(n);
-		if (strncmp(ep->me_name, prefix, len) == 0 &&
-		   ep->me_name[len] == '.') {
-		   	for (j = i; j < hash_size(hash_syms); j++) {
-				int n = (int) (long) hash_data(harray[j]);
-				mdir_entry_t *ep = entry(n);
-				int	w = strlen(ep->me_name);
-				if (strncmp(ep->me_name, prefix, len) != 0)
-					break;
-				if (w > *width)
-					*width = w;
-				}
-		   	return n;
-			}
-		}
-	return -1;
-}
-
-unsigned long long
-mon_get(char *name)
-{	int	n;
-	mdir_entry_t *ep;
-	tick_t	*tp;
-
-	if ((n = (int) (long) hash_lookup(hash_syms, name)) == 0)
-		return -1;
-	ep = entry(n);
-	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	return tp[mon_pos < 0 ? mon_snap : mon_pos];
-}
-
-unsigned long long
-mon_get_rel(char *name, int rel)
-{	mdir_entry_t *ep;
-	tick_t	*tp;
-	int	n;
-
-	if ((n = (int) (long) hash_lookup(hash_syms, name)) == 0)
-		return -1;
-	ep = entry(n);
-	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	n = mon_pos < 0 ? mon_snap : mon_pos;
-	n += rel;
-	if (n < 0)
-		n += max_ticks;
-	return tp[n];
-}
-
-unsigned long long
-mon_get_item(int n, int rel)
-{	mdir_entry_t *ep;
-	tick_t	*tp;
-
-	ep = entry(n);
-	tp = (tick_t *) ((char *) mmap_addr + ep->me_offset);
-	n = mon_pos < 0 ? mon_snap : mon_pos;
-	n += rel;
-	if (n < 0)
-		n += max_ticks;
-	return tp[n];
-}
-/**********************************************************************/
-/*   Get the current time, in 1/100th secs.			      */
-/**********************************************************************/
-unsigned long long
-mon_get_time()
-{	struct stat sbuf;
-
-	if (stat(mon_fname, &sbuf) < 0 || sbuf.st_ino != inode) {
-		return (unsigned long long) -1;
-		}
-	/***********************************************/
-	/*   Check in case the monitor changed pid.    */
-	/***********************************************/
-	
-	/***********************************************/
-	/*   Let mon proc know someone is watching.    */
-	/***********************************************/
-	mdir->md_readers = time(NULL);
-	return mon_get("time");
-}
-
-/**********************************************************************/
-/*   Let caller know if we are playing back.			      */
-/**********************************************************************/
-int
-mon_history()
-{
-	return old_pos >= 0;
-}
 /**********************************************************************/
 /*   Lock the time slot so we dont get partial results for each call  */
 /*   into monitor.c.						      */

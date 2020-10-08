@@ -81,7 +81,7 @@ init_termcap(int r, int c)
 	if (status == -1)
 	    fprintf(stderr, "Can't open termcap file\n");
 	else
-	    fprintf(stderr, "No termcap entry for a `%s' terminal\n", term_name);
+	    fprintf(stderr, "No termcap entry for a '%s' terminal\n", term_name);
 
 	/* pretend it's dumb and proceed */
 	smart_terminal = FALSE;

@@ -58,6 +58,13 @@ void	print_string PROTO((char *));
 void	mvprint(int, int, char *, ...);
 void	refresh(void);
 void	snap_to_file(FILE *);
+void	clear(void);
+void	snapshot(void);
+void	refresh_fp(FILE *fp);
+void	out_flush(void);
+void	reinit_screen(void);
+void	end_screen(void);
+
 
 extern int dsp_crmode;
 extern int csr_x, csr_y;

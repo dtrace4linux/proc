@@ -1028,8 +1028,12 @@ static int first_time = TRUE;
 			char *cp = strchr(buf, 'U');
 			if (cp == NULL)
 				cp = strchr(buf, ')');
+			if (cp == NULL)
+				cp = strchr(buf, ':');
 			cp++;
-			strcpy(cpu_id, cp);
+			while (*cp == ' ')
+				cp++;
+			strncpy(cpu_id, cp, sizeof cpu_id);
 			while (cp = strstr(cpu_id, "  "))
 				memcpy(cp, cp + 1, strlen(cp + 1) + 1);
 			strcpy(cpu_info, strchr(buf, ':') + 2);

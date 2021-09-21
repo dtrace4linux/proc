@@ -5,7 +5,7 @@ PLATFORM_FLAGS=-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 ARCH=
 CC=gcc $(ARCH) -fno-builtin -fno-inline-functions-called-once -fno-inline -g -O -W -I../common -I. -I$(CRISP)/include -I$(PLATFORM) -D$(CR_TYPE) $(PLATFORM_FLAGS)
 #CC=cc -I$(CRISP)/include -D$(CR_TYPE) -D_KMEMUSER
-SIGNAL_H = /usr/include/sys/signal.h
+#SIGNAL_H = /usr/include/sys/signal.h
 CRISP_LIB=$(CRISP)/bin/foxlib.a 
 
 H	= ../common/psys.h ../linux/graph.h include.h
@@ -66,8 +66,8 @@ sol2-sparc:
 
 all:	sigdesc.h $(OBJDIR)/proc $(KSTAT)
 
-sigdesc.h: ../common/sigconv.awk $(SIGNAL_H)
-	awk -f ../common/sigconv.awk $(SIGNAL_H) >sigdesc.h
+#sigdesc.h: ../common/sigconv.awk $(SIGNAL_H)
+#	awk -f ../common/sigconv.awk $(SIGNAL_H) >sigdesc.h
 
 $(OBJDIR)/proc: $(OBJDIR) $(OBJ)
 #	setuid root rm -f $(OBJDIR)/proc

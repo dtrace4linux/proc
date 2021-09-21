@@ -19,7 +19,7 @@
 # include	"psys.h"
 # include	"screen.h"
 # include	"coldisp.h"
-# include	"sigdesc.h"
+//# include	"sigdesc.h"
 # include	<ctype.h>
 # include	"../include/build.h"
 
@@ -375,6 +375,19 @@ hide_func(int argc, char **argv)
 	mvprint(6, 0, "Unknown column name %s\n", argv[i]);
 	press_to_continue();
 }
+int
+signame_to_int(char *cp)
+{	int	i;
+
+	for (i = 0; i < NSIG; i++) {
+		char *s = strsignal(i);
+		if (strcmp(s, cp) == 0)
+			return i;
+		if (strncmp(s, "SIG", 3) == 0 && strcmp(s+3, cp) == 0)
+			return i;
+	}
+	return -1;
+}
 static void
 kill_func(int argc, char **argv)
 {	int	sig = SIGTERM;
@@ -387,13 +400,14 @@ kill_func(int argc, char **argv)
 
 	if (*str == '\0' || strcmp(str, "-l") == 0) {
 		mvprint(6, 0, "The following signals are available:\n");
-		for (i = 0, mp = sigdesc; mp->name; mp++, i++) {
+		for (i = 0; i < NSIG; i++) {
+			char	*name = strsignal(i);
 			if ((i % 4) == 0)
 				print("\n");
-			print(" %s:", mp->name);
-			for (j = strlen(mp->name); j < 8; j++)
+			print(" %s:", name);
+			for (j = strlen(name); j < 8; j++)
 				print(" ");
-			print("%2d   ", mp->number);
+			print("%2d   ", i);
 			}
 		print("\n");
 		wait_for_key();
@@ -406,7 +420,7 @@ kill_func(int argc, char **argv)
 		if (isdigit(*cp))
 			sig = atoi(cp);
 		else 
-			sig = map_to_int(sigdesc, cp);
+			sig = signame_to_int(cp);
 		if (sig <= 0 || sig >= NSIG) {
 			error("Bad signal number.");
 			return;

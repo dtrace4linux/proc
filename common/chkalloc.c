@@ -10,15 +10,18 @@ chk_free_ptr(void **p)
 		*p = 0;
 	}
 }
+void *
 chk_strdup(char *str)
 {
 	return strdup(str);
 }
+void *
 chk_alloc(void *p)
 {
 	return malloc(p);
 }
-chk_realloc(int p, int s)
+void *
+chk_realloc(void *p, int s)
 {
 	return realloc(p, s);
 }

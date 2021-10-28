@@ -139,7 +139,7 @@ init_termcap(int r, int c)
 }
 
 void
-init_screen(int ticks)
+init_screen()
 {
     /* get the old settings for safe keeping */
     if (ioctl(0, TCGETA, &old_settings) == 0) {

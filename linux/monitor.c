@@ -27,7 +27,7 @@
 # include	"psys.h"
 # include	"screen.h"
 # include	"coldisp.h"
-# include	<../foxlib/hash.h>
+# include	"../include/hash.h"
 # include	<sys/mman.h>
 # include	<dirent.h>
 # include	<assert.h>

@@ -19,8 +19,8 @@
 # include	<netinet/in.h>
 # include	<netdb.h>
 # include 	<sys/mman.h>
-# include	<dstr.h>
-# include	"../foxlib/hash.h"
+# include	"../include/dstr.h"
+# include	"../include/hash.h"
 
 struct columns columns[] = {
 	{"USERNAME", "%-8s", 8, 0},
@@ -111,7 +111,7 @@ extern char *grep_filter;
 /**********************************************************************/
 /*   Prototypes.						      */
 /**********************************************************************/
-void int_handler(void);
+void int_handler(int);
 void settings_load(void);
 void settings_save(void);
 
@@ -357,12 +357,12 @@ static dstr_t old_dstr;
 		float	f;
 
 		pc = 100 * ((float) fip->f_blks * page_size) / fip->f_size;
-		if (fip->f_blks == (unsigned long) -2) {
+		if (fip->f_blks == -2) {
 			print("EPERM   %s\n", fip->f_name);
 			continue;
 			}
 
-		if (fip->f_blks == (unsigned long) -1) {
+		if (fip->f_blks == -1) {
 			print("Deleted %s\n", fip->f_name);
 			continue;
 			}
@@ -1075,7 +1075,7 @@ get_value(char *cp)
 	return ul;
 }
 void
-int_handler()
+int_handler(int x)
 {
 	graph_finish();
 	end_screen();
@@ -1606,6 +1606,9 @@ read_system_map(void)
 			if (sscanf(buf, "%x %s", &addr, name) != 2)
 				continue;
 			}
+
+		if (addr == 0)
+			continue;
 
 		if (sym_count >= sym_size) {
 			sym_size += 256;

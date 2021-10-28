@@ -64,6 +64,12 @@ void	refresh_fp(FILE *fp);
 void	out_flush(void);
 void	reinit_screen(void);
 void	end_screen(void);
+void disp_set_batch(int r, int c);
+void init_termcap(int r, int c);
+void init_screen(void);
+int tgetent(char *bp, char *name);
+int tnamchk(char *bp, char *name);
+
 
 
 extern int dsp_crmode;

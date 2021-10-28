@@ -5,7 +5,7 @@
 # include	<netdb.h>
 # include	<netinet/tcp.h>
 # include	<dirent.h>
-# include	<../foxlib/hash.h>
+# include	"../include/hash.h"
 
 /**********************************************************************/
 /*   Info to cache socket inodes to owning procs.		      */
@@ -42,6 +42,15 @@ static char *tcp_states[] = {
 static void load_portmap(void);
 static void read_fds(void);
 static void save_portmap(void);
+
+char *
+hostname(long ip)
+{	static char buf[128];
+
+	snprintf(buf, sizeof buf, "%d.%d.%d.%d",
+		(ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
+	return buf;
+}
 
 char *
 getport(unsigned int port, char *proto)

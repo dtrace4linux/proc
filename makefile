@@ -1,22 +1,22 @@
 #! /bin/make
-CRISP=../../../crisp
 
 PLATFORM_FLAGS=-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 ARCH=
-CC=gcc $(ARCH) -fno-builtin -fno-inline-functions-called-once -fno-inline -g -O -W -I../common -I. -I$(CRISP)/include -I$(PLATFORM) -D$(CR_TYPE) $(PLATFORM_FLAGS)
-#CC=cc -I$(CRISP)/include -D$(CR_TYPE) -D_KMEMUSER
-#SIGNAL_H = /usr/include/sys/signal.h
-CRISP_LIB=$(CRISP)/bin/foxlib.a 
+CC=gcc $(ARCH) -fno-builtin -fno-inline-functions-called-once -fno-inline -g -O -W -I../common -I. -I$(PLATFORM) -D$(CR_TYPE) $(PLATFORM_FLAGS)
 
 H	= ../common/psys.h ../linux/graph.h include.h
 OBJ=	\
 	$(OBJDIR)/coldisp.o \
 	$(OBJDIR)/commands.o \
+	$(OBJDIR)/crc32.o \
 	$(OBJDIR)/cpu.o \
 	$(OBJDIR)/dev.o \
 	$(OBJDIR)/disk.o \
+	$(OBJDIR)/dstr.o \
 	$(OBJDIR)/graph.o \
 	$(OBJDIR)/graphs.o \
+	$(OBJDIR)/hash.o \
+	$(OBJDIR)/hexdigits.o \
 	$(OBJDIR)/ifconfig.o \
 	$(OBJDIR)/interrupts.o \
 	$(OBJDIR)/kernel.o \
@@ -29,6 +29,7 @@ OBJ=	\
 	$(OBJDIR)/streams.o \
 	$(OBJDIR)/softirqs.o \
 	$(OBJDIR)/temperature.o \
+	$(OBJDIR)/time_str.o \
 	$(OBJDIR)/subs.o \
 	$(OBJDIR)/vmstat.o \
 	$(OBJDIR)/chkalloc.o
@@ -41,7 +42,6 @@ linux: the-world
 32:
 	cd linux ; $(MAKE) OBJDIR=../bin.linux-x86_32 \
 		ARCH=-m32 \
-		CRISP_LIB=/home/fox/crisp/bin.linux-x86_32/foxlib.a \
 		KSTAT= \
 		PLATFORM=linux CR_TYPE=CR_LINUX_GLIBC_X86_32 \
 		LIBS="-ldl"  -f ../makefile all
@@ -71,11 +71,9 @@ all:	sigdesc.h $(OBJDIR)/proc $(KSTAT)
 
 $(OBJDIR)/proc: $(OBJDIR) $(OBJ)
 #	setuid root rm -f $(OBJDIR)/proc
-	$(PURIFY) $(CC) -o $(OBJDIR)/proc $(OBJ) $(CRISP_LIB) $(LIBS)
-#	$(CC) -o $(OBJDIR)/monlist -DMAIN=1 monitor.c $(CRISP_LIB) $(LIBS)
+	$(PURIFY) $(CC) -o $(OBJDIR)/proc $(OBJ) $(LIBS)
+#	$(CC) -o $(OBJDIR)/monlist -DMAIN=1 monitor.c $(LIBS)
 	rm -f $(OBJDIR)/procmon ; ln -s proc $(OBJDIR)/procmon
-#	setuid root chown root $(OBJDIR)/proc
-#	setuid root chmod 4755 $(OBJDIR)/proc
 
 $(OBJDIR)/kstat: $(OBJDIR) kstat.c
 	$(CC) -o $(OBJDIR)/kstat kstat.c -lkstat
@@ -99,6 +97,10 @@ $(OBJDIR)/cpu.o:	cpu.c $(H)
 	$(CC) -c cpu.c
 	mv cpu.o $(OBJDIR)
 
+$(OBJDIR)/crc32.o:	../common/crc32.c $(H)
+	$(CC) -I. -c ../common/crc32.c
+	mv crc32.o $(OBJDIR)
+
 $(OBJDIR)/dev.o:	dev.c $(H)
 	$(CC) -c dev.c
 	mv dev.o $(OBJDIR)
@@ -107,6 +109,10 @@ $(OBJDIR)/disk.o:	disk.c $(H)
 	$(CC) -c disk.c
 	mv disk.o $(OBJDIR)
 
+$(OBJDIR)/dstr.o:	../common/dstr.c $(H)
+	$(CC) -I. -c ../common/dstr.c
+	mv dstr.o $(OBJDIR)
+
 $(OBJDIR)/graph.o:	graph.c $(H)
 	$(CC) -c graph.c
 	mv graph.o $(OBJDIR)
@@ -114,6 +120,14 @@ $(OBJDIR)/graph.o:	graph.c $(H)
 $(OBJDIR)/graphs.o:	graphs.c $(H)
 	$(CC) -c graphs.c
 	mv graphs.o $(OBJDIR)
+
+$(OBJDIR)/hash.o:	../common/hash.c
+	$(CC) -c ../common/hash.c
+	mv hash.o $(OBJDIR)
+
+$(OBJDIR)/hexdigits.o:	../common/hexdigits.c
+	$(CC) -c ../common/hexdigits.c
+	mv hexdigits.o $(OBJDIR)
 
 $(OBJDIR)/ifconfig.o:	ifconfig.c $(H)
 	$(CC) -c ifconfig.c
@@ -166,6 +180,10 @@ $(OBJDIR)/subs.o:	../common/subs.c $(H)
 $(OBJDIR)/temperature.o:	../linux/temperature.c $(H)
 	$(CC) -c ../linux/temperature.c
 	mv temperature.o $(OBJDIR)
+
+$(OBJDIR)/time_str.o:	../common/time_str.c
+	$(CC) -c ../common/time_str.c
+	mv time_str.o $(OBJDIR)
 
 $(OBJDIR)/vmstat.o:	../linux/vmstat.c $(H)
 	$(CC) -c ../linux/vmstat.c

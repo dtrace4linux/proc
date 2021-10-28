@@ -37,6 +37,8 @@
 #	define	FALSE	0
 # endif
 
+# define UNUSED_PARAMETER(x)
+
 /**********************************************************************/
 /*   CPU states.						      */
 /**********************************************************************/
@@ -223,4 +225,5 @@ char * read_file2(char *path, char *name);
 void error(char *str);
 void	chk_free(void *);
 void	chk_free_ptr(void **);
+char	*username(int);
 

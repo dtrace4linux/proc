@@ -666,7 +666,7 @@ mon_history()
 static void
 mon_item(char *fname, char *lname, int type)
 {	FILE	*fp;
-	char	buf[4096];
+	char	buf[32 * 1024];
 	char	vname[BUFSIZ];
 	char	*cp, *vp, *vp1;
 	int	i, n;
@@ -758,12 +758,14 @@ mon_item(char *fname, char *lname, int type)
 		}
 
 	if (type & TY_IGNORE_HEADER) {
-		if (fgets(buf, sizeof buf, fp)) {
-			}
+		int c;
+		while ((c = fgetc(fp)) != '\n' && c != EOF)
+			;
 		}
 	if (type & TY_IGNORE_HEADER2) {
-		if (fgets(buf, sizeof buf, fp)) {
-			}
+		int c;
+		while ((c = fgetc(fp)) != '\n' && c != EOF)
+			;
 		}
 
 	while (fgets(buf, sizeof buf, fp)) {

@@ -40,7 +40,7 @@ display_temperature()
 	if (temp_idx < 0)
 		temp_idx = mon_find("temperature", &width);
 
-	for (i = 1; ; i++) {
+	for (i = 0; ; i++) {
 		snprintf(buf, sizeof buf, "temperature.cpu%d.t", i);
 		if (!mon_exists(buf)) {
 			break;
@@ -56,11 +56,14 @@ display_temperature()
 		if (cp) {
 			cp[strlen(cp)-1] = '\0';
 			}
-		else
-			cp = chk_strdup("hello");
+		else {
+			char buf[BUFSIZ];
+			snprintf(buf, sizeof buf, "Core %d", i);
+			cp = chk_strdup(buf);
+		}
 
 		
-		print("%-12s : %5.1f C  (high = %5.1f C, crit = %5.1f C)\n", 
+		print("%-12s : %5.1f C (high = %5.1f C, crit = %5.1f C)\n", 
 			cp ? cp : "no-label",
 			v / 1000., 
 			v1 / 1000., 

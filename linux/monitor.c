@@ -125,6 +125,7 @@ static void mon_rehash(void);
 void mon_netstat(void);
 int	mon_exists(char *);
 void mon_procs(void);
+void mon_temp(void);
 void monitor_read(void);
 void monitor_init(void);
 void	reset_terminal(void);
@@ -435,7 +436,7 @@ monitor_read()
 		mon_item("/proc/net/netstat","proto",	TY_NETSTAT);
 		mon_item("/proc/net/snmp",   "proto",	TY_NETSTAT);
 		mon_item("/proc/interrupts",   "irq",	TY_INTERRUPTS);
-		mon_item("/sys/class/hwmon/hwmon0",   "temp",	TY_TEMPERATURE);
+		mon_temp();
 		mon_netstat();
 		mon_procs();
 
@@ -497,7 +498,8 @@ monitor_start()
 		exit(1);
 		}
 	buf2[ret] = '\0';
-	snprintf(buf, sizeof buf, "%smon", buf2);
+	if (snprintf(buf, sizeof buf, "%smon", buf2)) {
+	}
 	global_argv[0] = buf;
 	/***********************************************/
 	/*   Close  stdout  since  procmon  writes to  */
@@ -669,42 +671,59 @@ mon_item(char *fname, char *lname, int type)
 	char	buf[32 * 1024];
 	char	vname[BUFSIZ];
 	char	*cp, *vp, *vp1;
-	int	i, n;
+	int	i, j, n;
 	unsigned long long v;
 
 	if (type & TY_TEMPERATURE) {
 		char	*cp2, *cp3, *cp4;
+		static int max_hwmon = -1;
 		float	t, t1, t2;
-		char	*dn = "/sys/class/hwmon/hwmon0";
+		char	*dn = "/sys/class/hwmon/hwmon";
 
-		for (i = 1; i < 128; i++) {
-			snprintf(buf, sizeof buf, "%s/temp%d_input", dn, i);
-			if ((cp = read_file2(buf, NULL)) == NULL)
+		for (i = 0; ; i++) {
+			struct stat sbuf;
+			snprintf(buf, sizeof buf, "%s%d", dn, i);
+			if (stat(buf, &sbuf) < 0)
 				break;
-			if (cp == NULL)
-				break;
 
-			snprintf(buf, sizeof buf, "%s/temp%d_max", dn, i);
-			if ((cp3 = read_file(buf, NULL)) == NULL)
-				break;
-			cp3[strlen(cp3)-1] = '\0';
+			for (j = 1; j < 1000; j++) {
+				int	cpu;
 
-			snprintf(buf, sizeof buf, "%s/temp%d_crit", dn, i);
-			if ((cp4 = read_file(buf, NULL)) == NULL)
-				break;
-			cp4[strlen(cp4)-1] = '\0';
+				snprintf(buf, sizeof buf, "%s%d/temp%d_label", dn, i, j);
+				if ((cp = read_file2(buf, NULL)) == NULL)
+					break;
+				if (strncmp(cp, "Core", 4) != 0)
+					continue;
+				cpu = atoi(cp + 5);
 
-			snprintf(vname, sizeof vname, "temperature.cpu%d.t", i);
-			mon_set(vname, atoi(cp));
-			snprintf(vname, sizeof vname, "temperature.cpu%d.tmax", i);
-			mon_set(vname, atoi(cp3));
-			snprintf(vname, sizeof vname, "temperature.cpu%d.tcrit", i);
-			mon_set(vname, atoi(cp4));
+				snprintf(buf, sizeof buf, "%s%d/temp%d_input", dn, i, j);
+//printf("try %s\n", buf);
+				if ((cp = read_file2(buf, NULL)) == NULL)
+					break;
 
-			chk_free(cp);
-			chk_free(cp3);
-			chk_free(cp4);
+//printf("found %s: %s\n", buf, cp);
+				snprintf(buf, sizeof buf, "%s%d/temp%d_max", dn, i, j);
+				if ((cp3 = read_file(buf, NULL)) == NULL)
+					break;
+				cp3[strlen(cp3)-1] = '\0';
+
+				snprintf(buf, sizeof buf, "%s%d/temp%d_crit", dn, i, j);
+				if ((cp4 = read_file(buf, NULL)) == NULL)
+					break;
+				cp4[strlen(cp4)-1] = '\0';
+
+				snprintf(vname, sizeof vname, "temperature.cpu%d.t", cpu);
+				mon_set(vname, atoi(cp));
+				snprintf(vname, sizeof vname, "temperature.cpu%d.tmax", cpu);
+				mon_set(vname, atoi(cp3));
+				snprintf(vname, sizeof vname, "temperature.cpu%d.tcrit", cpu);
+				mon_set(vname, atoi(cp4));
+
+				chk_free(cp);
+				chk_free(cp3);
+				chk_free(cp4);
 			}
+		}
 		return;
 		}
 
@@ -1035,6 +1054,21 @@ mon_procs(void)
 	buf1[strlen(buf1)-4] = '\0';
 	rename(buf, buf1);
 #endif
+}
+
+void
+mon_temp()
+{	int	i;
+	char	buf[PATH_MAX+1];
+	struct stat sbuf;
+
+	for (i = 0; ; i++) {
+		(void) snprintf(buf, sizeof buf, "/sys/class/hwmon/hwmon%d", i);
+		if (stat(buf, &sbuf) < 0)
+			break;
+
+		mon_item(buf, "temp", TY_TEMPERATURE);
+	}
 }
 static unsigned long long
 get_num(char **str)
